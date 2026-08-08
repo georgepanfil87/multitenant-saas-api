@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.10" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
@@ -18,6 +19,7 @@
     <ProjectReference Include="..\..\src\MultiTenantSaaS.Domain\MultiTenantSaaS.Domain.csproj" />
     <ProjectReference Include="..\..\src\MultiTenantSaaS.Application\MultiTenantSaaS.Application.csproj" />
     <ProjectReference Include="..\..\src\MultiTenantSaaS.Infrastructure\MultiTenantSaaS.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\MultiTenantSaaS.Api\MultiTenantSaaS.Api.csproj" />
   </ItemGroup>
 
 </Project>
