@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Fără dependințe, intenționat. O referință aici înseamnă că regula Clean Architecture a fost încălcată. -->
+
+</Project>

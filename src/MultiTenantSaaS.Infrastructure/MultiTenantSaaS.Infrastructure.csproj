@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\MultiTenantSaaS.Application\MultiTenantSaaS.Application.csproj" />
+  </ItemGroup>
+
+</Project>
