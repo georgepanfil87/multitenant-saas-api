@@ -7,23 +7,22 @@ using MultiTenantSaaS.Application.Features.Tenants;
 
 namespace MultiTenantSaaS.Api.Controllers;
 
-/// <summary>Înregistrarea și administrarea organizațiilor.</summary>
+/// <summary>Organization registration and administration.</summary>
 [ApiController]
 [Route("api/tenants")]
 [Produces("application/json")]
 public sealed class TenantsController(ITenantOnboardingService onboarding) : ControllerBase
 {
-    /// <summary>Înregistrează o organizație nouă și primul ei administrator.</summary>
+    /// <summary>Registers a new organization and its first administrator.</summary>
     /// <remarks>
-    /// Endpoint public, singurul care creează date fără un tenant deja stabilit.
-    /// Creează într-o singură tranzacție: organizația, un utilizator cu rol
-    /// <c>TenantAdmin</c>, un proiect implicit și un tichet de bun venit. Returnează
-    /// direct un token, deci clientul poate continua fără un login separat.
+    /// Public endpoint, and the only one that writes data without an existing tenant. Creates
+    /// the organization, a TenantAdmin user, a default project and a welcome ticket in a single
+    /// transaction, then returns a valid token so no separate login is needed.
     /// </remarks>
-    /// <response code="201">Organizație creată.</response>
-    /// <response code="400">Date invalide (ex: slug cu format greșit).</response>
-    /// <response code="409">Slug-ul este deja folosit sau rezervat.</response>
-    /// <response code="429">Prea multe înregistrări de la aceeași adresă IP.</response>
+    /// <response code="201">Organization created.</response>
+    /// <response code="400">Invalid data, for example a malformed slug.</response>
+    /// <response code="409">The slug is already taken or reserved.</response>
+    /// <response code="429">Too many registrations from the same IP address.</response>
     [HttpPost("register")]
     [AllowAnonymous]
     [EnableRateLimiting(RateLimitOptions.RegistrationPolicy)]
@@ -38,8 +37,8 @@ public sealed class TenantsController(ITenantOnboardingService onboarding) : Con
         return CreatedAtAction(nameof(GetAll), new { id = result.Tenant.Id }, result);
     }
 
-    /// <summary>Listează toate organizațiile din platformă.</summary>
-    /// <remarks>Rezervat administratorilor de platformă: este singura vedere peste toți tenanții.</remarks>
+    /// <summary>Lists every organization on the platform.</summary>
+    /// <remarks>Restricted to platform administrators: it is the only cross-tenant view.</remarks>
     [HttpGet]
     [Authorize(Policy = AuthorizationPolicies.GlobalAdmin)]
     [ProducesResponseType<IReadOnlyList<TenantSummary>>(StatusCodes.Status200OK)]

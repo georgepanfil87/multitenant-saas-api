@@ -53,8 +53,8 @@ public sealed class TenantOnboardingTests : IDisposable
         Assert.Equal(SubscriptionPlan.Free, result.Tenant.Plan);
         Assert.True(result.Tenant.IsActive);
 
-        // Primul utilizator primește automat rolul de administrator de organizație,
-        // altfel organizația ar fi creată fără nimeni care s-o administreze.
+        // The first user is automatically the organization administrator; otherwise the
+        // organization would be created with nobody able to administer it.
         Assert.Equal(UserRole.TenantAdmin, result.Admin.Role);
         Assert.Equal("admin@acmenou.ro", result.Admin.Email);
 
@@ -69,7 +69,7 @@ public sealed class TenantOnboardingTests : IDisposable
         var result = await _sut.RegisterAsync(ValidRequest());
         var tenantId = result.Tenant.Id;
 
-        // Citim ocolind filtrul, ca să vedem exact ce s-a scris în baza de date.
+        // Read past the filter, to see exactly what was written.
         Assert.Equal(tenantId, (await _db.Users.IgnoreQueryFilters().SingleAsync()).TenantId);
         Assert.Equal(tenantId, (await _db.Projects.IgnoreQueryFilters().SingleAsync()).TenantId);
         Assert.Equal(tenantId, (await _db.Tickets.IgnoreQueryFilters().SingleAsync()).TenantId);
@@ -80,8 +80,8 @@ public sealed class TenantOnboardingTests : IDisposable
     {
         await _sut.RegisterAsync(ValidRequest());
 
-        // Scope-ul deschis intern trebuie închis: altfel restul cererii ar rula
-        // în contextul organizației tocmai create.
+        // The internal scope must close, otherwise the rest of the request would run in the
+        // newly created organization's context.
         Assert.False(_tenantContext.IsResolved);
     }
 
@@ -104,7 +104,7 @@ public sealed class TenantOnboardingTests : IDisposable
         await _sut.RegisterAsync(ValidRequest());
 
         var ex = await Assert.ThrowsAsync<ConflictException>(() => _sut.RegisterAsync(ValidRequest()));
-        Assert.Contains("deja folosit", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("already taken", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -117,8 +117,8 @@ public sealed class TenantOnboardingTests : IDisposable
     [Fact]
     public async Task Register_WithInvalidSlug_ReturnsBadRequest()
     {
-        // Validarea din DTO prinde asta înainte de serviciu, dar invariantul din domeniu
-        // trebuie să reziste și pe căi care ocolesc controllerul.
+        // DTO validation catches this before the service, but the domain invariant must also
+        // hold on paths that bypass the controller.
         await Assert.ThrowsAsync<BadRequestException>(() => _sut.RegisterAsync(ValidRequest("nu valid!")));
     }
 
@@ -144,9 +144,9 @@ public sealed class TenantOnboardingTests : IDisposable
             _db, transactions, _tenantContext, new NoOpTenantStore(),
             new Pbkdf2PasswordHasher(), new FakeTokenGenerator());
 
-        // Nume gol: tenantul se salvează, apoi User.Create aruncă. Excepția iese din
-        // scope-ul de tenant, tranzacția e eliberată fără commit, iar PostgreSQL derulează
-        // înapoi tenantul deja scris - altfel ar rămâne o organizație fără administrator.
+        // Blank name: the tenant saves, then User.Create throws. The exception leaves the tenant
+        // scope, the transaction is disposed without a commit, and PostgreSQL rolls the tenant
+        // back; otherwise an organization without an administrator would remain.
         await Assert.ThrowsAsync<ArgumentException>(() =>
             sut.RegisterAsync(ValidRequest("esec") with { AdminFullName = "   " }));
 
@@ -154,8 +154,8 @@ public sealed class TenantOnboardingTests : IDisposable
         Assert.False(_tenantContext.IsResolved);
     }
 
-    // Provider-ul in-memory nu suportă tranzacții. Le înlocuim cu un no-op: aici testăm
-    // logica de onboarding, nu comportamentul tranzacțional al PostgreSQL.
+    // The in-memory provider has no transactions. Replaced with a no-op: this suite tests
+    // onboarding logic, not PostgreSQL's transactional behaviour.
     private sealed class NoOpTransactionManager : ITransactionManager
     {
         public NoOpTransaction? LastTransaction { get; private set; }

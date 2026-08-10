@@ -16,9 +16,7 @@ public interface ITenantOnboardingService
     Task<IReadOnlyList<TenantSummary>> ListAllAsync(CancellationToken cancellationToken = default);
 }
 
-/// <summary>
-/// Creează o organizație nouă împreună cu primul ei administrator și cu datele inițiale.
-/// </summary>
+/// <summary>Creates a new organization together with its first administrator and seed data.</summary>
 public sealed class TenantOnboardingService(
     IApplicationDbContext db,
     ITransactionManager transactions,
@@ -40,45 +38,45 @@ public sealed class TenantOnboardingService(
 
         if (string.Equals(slug, Tenant.SystemTenantSlug, StringComparison.Ordinal))
         {
-            throw new ConflictException($"Slug-ul „{slug}\" este rezervat platformei.");
+            throw new ConflictException($"The slug \"{slug}\" is reserved by the platform.");
         }
 
         if (await db.Tenants.AnyAsync(t => t.Slug == slug, cancellationToken))
         {
-            throw new ConflictException($"Slug-ul „{slug}\" este deja folosit de altă organizație.");
+            throw new ConflictException($"The slug \"{slug}\" is already taken by another organization.");
         }
 
-        // Două SaveChanges succesive: primul creează tenantul, al doilea scrie în interiorul lui.
-        // Tranzacția le face indivizibile - altfel o eroare la pasul doi ar lăsa o organizație
-        // fără niciun utilizator, adică imposibil de accesat și imposibil de reînregistrat.
+        // Two consecutive SaveChanges: the first creates the tenant, the second writes inside it.
+        // The transaction makes them indivisible; otherwise a failure in step two would leave an
+        // organization with no users: unreachable, yet holding its slug.
         await using var transaction = await transactions.BeginAsync(cancellationToken);
 
         Tenant tenant;
         try
         {
-            // Tenant nu implementează ITenantEntity, deci se poate salva fără context de tenant.
+            // Tenant is not an ITenantEntity, so it can be saved without a tenant context.
             tenant = Tenant.Create(request.OrganizationName, slug);
             db.Tenants.Add(tenant);
             await db.SaveChangesAsync(cancellationToken);
         }
         catch (ArgumentException ex)
         {
-            // Invarianții din domeniu (slug invalid, nume gol) sunt erori ale clientului.
+            // Domain invariants (bad slug, empty name) are client errors.
             throw new BadRequestException(ex.Message);
         }
         catch (DbUpdateException)
         {
-            // Verificarea de mai sus poate fi depășită de două cereri simultane; indexul unic
-            // din PostgreSQL este arbitrul final.
-            throw new ConflictException($"Slug-ul „{slug}\" este deja folosit de altă organizație.");
+            // The check above can be raced by concurrent requests; the unique index is the
+            // final arbiter.
+            throw new ConflictException($"The slug \"{slug}\" is already taken by another organization.");
         }
 
         User admin;
         Project project;
         Ticket welcomeTicket;
 
-        // Intrăm în contextul organizației abia create. Scope-ul e imbricat peste cel al cererii,
-        // iar la ieșire contextul revine exact la ce era înainte.
+        // Enter the newly created organization's context. The scope nests over the request's own,
+        // and on exit the previous context is restored exactly.
         using (tenantContext.BeginScope(tenant.Id, tenant.Slug))
         {
             admin = User.Create(
@@ -88,21 +86,20 @@ public sealed class TenantOnboardingService(
                 UserRole.TenantAdmin);
 
             project = Project.Create(DefaultProjectName, DefaultProjectCode, admin.Id,
-                "Proiect creat automat la înregistrarea organizației.");
+                "Created automatically when the organization was registered.");
 
             welcomeTicket = Ticket.Create(
                 project.Id,
-                "Bine ai venit!",
+                "Welcome!",
                 admin.Id,
-                "Acesta este primul tău tichet. Îl poți edita, aloca sau închide.",
+                "This is your first ticket. You can edit it, assign it or close it.",
                 TicketPriority.Low);
 
             db.Users.Add(admin);
             db.Projects.Add(project);
             db.Tickets.Add(welcomeTicket);
 
-            // Un singur SaveChanges pentru toate trei: DbContext-ul le ștampilează pe toate
-            // cu tenantul din scope-ul curent.
+            // One SaveChanges for all three: the DbContext stamps each with the scoped tenant.
             await db.SaveChangesAsync(cancellationToken);
         }
 
@@ -126,8 +123,8 @@ public sealed class TenantOnboardingService(
 
     public async Task<IReadOnlyList<TenantSummary>> ListAllAsync(CancellationToken cancellationToken = default)
     {
-        // Tabela Tenants nu e tenant-scoped, deci nu are query filter de ocolit.
-        // Restricția la GlobalAdmin se face prin policy, pe controller.
+        // The Tenants table is not tenant-scoped, so there is no query filter to bypass.
+        // Access is restricted to GlobalAdmin by policy on the controller.
         var tenants = await db.Tenants
             .AsNoTracking()
             .OrderBy(t => t.Slug)

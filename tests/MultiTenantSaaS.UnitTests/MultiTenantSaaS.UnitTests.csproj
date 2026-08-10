@@ -3,7 +3,7 @@
   <PropertyGroup>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
-    <!-- Numele de teste folosesc underscore (Metoda_Scenariu_RezultatAsteptat). -->
+    <!-- Test names use underscores (Method_Scenario_ExpectedResult). -->
     <NoWarn>$(NoWarn);CA1707</NoWarn>
   </PropertyGroup>
 

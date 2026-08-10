@@ -1,11 +1,10 @@
 namespace MultiTenantSaaS.Application.Abstractions;
 
-/// <summary>Hashing și verificare de parole.</summary>
 public interface IPasswordHasher
 {
-    /// <summary>Produce un hash care include salt-ul și parametrii, ca să poată fi verificat singur.</summary>
+    /// <summary>Produces a self-describing hash that embeds the salt and parameters.</summary>
     string Hash(string password);
 
-    /// <summary>Verifică o parolă în clar față de un hash stocat. Nu aruncă pentru hash-uri malformate.</summary>
+    /// <summary>Verifies a password. Returns false for malformed hashes rather than throwing.</summary>
     bool Verify(string password, string hash);
 }

@@ -5,14 +5,14 @@ using MultiTenantSaaS.Application.Features.Tickets;
 
 namespace MultiTenantSaaS.Api.Controllers;
 
-/// <summary>Tichetele organizației curente.</summary>
+/// <summary>Tickets of the current organization.</summary>
 [ApiController]
 [Route("api/tickets")]
 [Produces("application/json")]
 [Authorize(Policy = AuthorizationPolicies.Member)]
 public sealed class TicketsController(ITicketService tickets) : ControllerBase
 {
-    /// <summary>Listează tichetele, cu filtre și paginare.</summary>
+    /// <summary>Lists tickets, with filters and pagination.</summary>
     [HttpGet]
     [ProducesResponseType<PagedResult<TicketResponse>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<PagedResult<TicketResponse>>> List(
@@ -21,16 +21,16 @@ public sealed class TicketsController(ITicketService tickets) : ControllerBase
         CancellationToken cancellationToken)
         => Ok(await tickets.ListAsync(filter, pagination, cancellationToken));
 
-    /// <summary>Returnează un tichet după ID.</summary>
-    /// <response code="404">Tichetul nu există în organizația curentă.</response>
+    /// <summary>Returns a ticket by id.</summary>
+    /// <response code="404">No such ticket in the current organization.</response>
     [HttpGet("{id:guid}")]
     [ProducesResponseType<TicketResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<TicketResponse>> Get(Guid id, CancellationToken cancellationToken)
         => Ok(await tickets.GetAsync(id, cancellationToken));
 
-    /// <summary>Creează un tichet într-un proiect al organizației curente.</summary>
-    /// <response code="404">Proiectul nu există în organizația curentă.</response>
+    /// <summary>Creates a ticket in a project of the current organization.</summary>
+    /// <response code="404">No such project in the current organization.</response>
     [HttpPost]
     [ProducesResponseType<TicketResponse>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -42,7 +42,7 @@ public sealed class TicketsController(ITicketService tickets) : ControllerBase
         return CreatedAtAction(nameof(Get), new { id = ticket.Id }, ticket);
     }
 
-    /// <summary>Actualizează titlul, descrierea, prioritatea și termenul.</summary>
+    /// <summary>Updates title, description, priority and due date.</summary>
     [HttpPut("{id:guid}")]
     [ProducesResponseType<TicketResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -52,8 +52,8 @@ public sealed class TicketsController(ITicketService tickets) : ControllerBase
         CancellationToken cancellationToken)
         => Ok(await tickets.UpdateAsync(id, request, cancellationToken));
 
-    /// <summary>Schimbă starea tichetului.</summary>
-    /// <response code="400">Tranziția nu este permisă de ciclul de viață.</response>
+    /// <summary>Changes the ticket status.</summary>
+    /// <response code="400">The transition is not allowed by the lifecycle.</response>
     [HttpPatch("{id:guid}/status")]
     [ProducesResponseType<TicketResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -63,8 +63,8 @@ public sealed class TicketsController(ITicketService tickets) : ControllerBase
         CancellationToken cancellationToken)
         => Ok(await tickets.ChangeStatusAsync(id, request, cancellationToken));
 
-    /// <summary>Alocă tichetul unui utilizator din organizație, sau îl dezalocă.</summary>
-    /// <response code="404">Utilizatorul nu există în organizația curentă.</response>
+    /// <summary>Assigns the ticket to a user of the organization, or unassigns it.</summary>
+    /// <response code="404">No such user in the current organization.</response>
     [HttpPatch("{id:guid}/assignee")]
     [ProducesResponseType<TicketResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -74,7 +74,7 @@ public sealed class TicketsController(ITicketService tickets) : ControllerBase
         CancellationToken cancellationToken)
         => Ok(await tickets.AssignAsync(id, request, cancellationToken));
 
-    /// <summary>Șterge un tichet.</summary>
+    /// <summary>Deletes a ticket.</summary>
     [HttpDelete("{id:guid}")]
     [Authorize(Policy = AuthorizationPolicies.TenantAdmin)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

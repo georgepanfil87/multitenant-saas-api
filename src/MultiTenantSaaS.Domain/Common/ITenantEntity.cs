@@ -1,15 +1,12 @@
 namespace MultiTenantSaaS.Domain.Common;
 
 /// <summary>
-/// Marchează o entitate ca aparținând unui tenant. Entitățile care implementează această
-/// interfață primesc automat global query filter pe <c>TenantId</c> (vezi ApplicationDbContext).
+/// Marks an entity as owned by a tenant. Implementing it is enough: the DbContext discovers
+/// these types and applies the tenant query filter automatically.
 /// </summary>
 public interface ITenantEntity
 {
-    /// <summary>
-    /// Tenantul proprietar. Expus doar cu getter, deliberat: valoarea e ștampilată exclusiv
-    /// de DbContext la SaveChanges, ca să nu existe cale prin care codul de aplicație
-    /// să atribuie un tenant greșit.
-    /// </summary>
+    // Getter only, by design: the value is stamped exclusively by the DbContext on save,
+    // so application code cannot assign the wrong tenant.
     Guid TenantId { get; }
 }

@@ -1,6 +1,6 @@
 <Project>
 
-  <!-- Setări comune tuturor proiectelor din soluție. -->
+  <!-- Settings shared by every project in the solution. -->
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <LangVersion>12.0</LangVersion>

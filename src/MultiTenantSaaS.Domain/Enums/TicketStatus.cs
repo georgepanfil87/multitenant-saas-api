@@ -1,6 +1,6 @@
 namespace MultiTenantSaaS.Domain.Enums;
 
-/// <summary>Starea din ciclul de viață al unui tichet.</summary>
+/// <summary>Stage in a ticket's lifecycle.</summary>
 public enum TicketStatus
 {
     Open = 1,

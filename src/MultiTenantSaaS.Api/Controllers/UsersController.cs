@@ -5,21 +5,21 @@ using MultiTenantSaaS.Application.Features.Authentication;
 
 namespace MultiTenantSaaS.Api.Controllers;
 
-/// <summary>Administrarea utilizatorilor din organizația curentă.</summary>
+/// <summary>User administration within the caller's organization.</summary>
 [ApiController]
 [Route("api/users")]
 [Produces("application/json")]
 [Authorize(Policy = AuthorizationPolicies.TenantAdmin)]
 public sealed class UsersController(IAuthService authService) : ControllerBase
 {
-    /// <summary>Creează un utilizator în organizația curentă.</summary>
+    /// <summary>Creates a user in the current organization.</summary>
     /// <remarks>
-    /// Organizația nu se trimite în corpul cererii: se ia din tokenul apelantului.
-    /// Un administrator nu poate crea utilizatori în altă organizație decât a lui.
+    /// The organization is taken from the caller's token, so an administrator cannot create
+    /// users in an organization other than their own.
     /// </remarks>
-    /// <response code="201">Utilizator creat.</response>
-    /// <response code="403">Rol insuficient, sau tentativă de a acorda GlobalAdmin.</response>
-    /// <response code="409">Emailul există deja în această organizație.</response>
+    /// <response code="201">User created.</response>
+    /// <response code="403">Insufficient role, or an attempt to grant GlobalAdmin.</response>
+    /// <response code="409">The email already exists in this organization.</response>
     [HttpPost]
     [ProducesResponseType<UserResponse>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

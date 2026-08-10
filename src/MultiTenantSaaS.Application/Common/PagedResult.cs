@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace MultiTenantSaaS.Application.Common;
 
-/// <summary>O pagină de rezultate, împreună cu informațiile de navigare.</summary>
+/// <summary>A page of results together with navigation metadata.</summary>
 public sealed record PagedResult<T>(IReadOnlyList<T> Items, int Page, int PageSize, int TotalCount)
 {
     public int TotalPages => PageSize <= 0 ? 0 : (int)Math.Ceiling(TotalCount / (double)PageSize);
@@ -10,19 +10,17 @@ public sealed record PagedResult<T>(IReadOnlyList<T> Items, int Page, int PageSi
     public bool HasNextPage => Page < TotalPages;
 }
 
-/// <summary>Parametrii de paginare, comuni tuturor listărilor.</summary>
+/// <summary>Pagination parameters shared by every listing endpoint.</summary>
 public sealed record PageRequest
 {
-    /// <summary>Numărul paginii, începând de la 1.</summary>
     [Range(1, int.MaxValue)]
     public int Page { get; init; } = 1;
 
-    /// <summary>
-    /// Câte elemente pe pagină. Plafonat la 100, ca un client să nu poată cere
-    /// întreaga tabelă printr-un singur request.
-    /// </summary>
+    /// <summary>Items per page, capped at 100 so a client cannot request the whole table.</summary>
     [Range(1, 100)]
     public int PageSize { get; init; } = 20;
 
-    public int Skip => (Page - 1) * PageSize;
+    // A method, not a property: a public property would be listed by ApiExplorer as a
+    // query parameter, suggesting a knob the client does not have.
+    public int Skip() => (Page - 1) * PageSize;
 }

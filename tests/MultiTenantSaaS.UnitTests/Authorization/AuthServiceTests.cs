@@ -54,8 +54,8 @@ public sealed class AuthServiceTests : IDisposable
     [Fact]
     public async Task Login_WithSameEmailButWrongTenant_Fails()
     {
-        // Scenariul care justifică unicitatea (TenantId, Email): contul există în Acme,
-        // dar cererea de login vine pentru Globex.
+        // The scenario that justifies (TenantId, Email) uniqueness: the account exists in Acme,
+        // but the login request targets Globex.
         await SeedUserAsync(AcmeId, "george@acme.ro", UserRole.TenantAdmin);
 
         using (_tenantContext.BeginScope(GlobexId, "globex"))
@@ -78,7 +78,7 @@ public sealed class AuthServiceTests : IDisposable
             var unknownEmail = await Assert.ThrowsAsync<AuthenticationFailedException>(() =>
                 _sut.LoginAsync(new LoginRequest { Email = "nimeni@acme.ro", Password = "gresita" }));
 
-            // Mesaje identice: altfel API-ul confirmă ce adrese există în organizație.
+            // Identical messages: otherwise the API confirms which addresses exist.
             Assert.Equal(wrongPassword.Message, unknownEmail.Message);
         }
     }
@@ -123,7 +123,7 @@ public sealed class AuthServiceTests : IDisposable
             var entity = await _db.Users.SingleAsync(u => u.Id == created.Id);
 
             Assert.Equal(AcmeId, entity.TenantId);
-            Assert.Equal("nou@acme.ro", entity.Email); // normalizat în domeniu
+            Assert.Equal("nou@acme.ro", entity.Email); // normalized in the domain
             Assert.Equal(UserRole.Member, entity.Role);
             Assert.NotEqual(Password, entity.PasswordHash);
         }

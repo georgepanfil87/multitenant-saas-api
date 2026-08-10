@@ -89,19 +89,19 @@ namespace MultiTenantSaaS.Infrastructure.Persistence.Migrations
                         new
                         {
                             Id = 1,
-                            Description = "Administrator de platformă.",
+                            Description = "Platform administrator.",
                             Name = "GlobalAdmin"
                         },
                         new
                         {
                             Id = 2,
-                            Description = "Administrator al organizației.",
+                            Description = "Organization administrator.",
                             Name = "TenantAdmin"
                         },
                         new
                         {
                             Id = 3,
-                            Description = "Utilizator al organizației.",
+                            Description = "Organization user.",
                             Name = "Member"
                         });
                 });

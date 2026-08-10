@@ -2,9 +2,7 @@ using Microsoft.Extensions.Options;
 
 namespace MultiTenantSaaS.Api.MultiTenancy;
 
-/// <summary>
-/// Extrage slug-ul tenantului din subdomeniu: <c>acme.api.exemplu.ro</c> → <c>acme</c>.
-/// </summary>
+/// <summary>Extracts the tenant slug from the subdomain: acme.api.example.com to "acme".</summary>
 public sealed class SubdomainTenantResolutionStrategy(IOptions<TenantResolutionOptions> options)
     : ITenantResolutionStrategy
 {
@@ -21,9 +19,9 @@ public sealed class SubdomainTenantResolutionStrategy(IOptions<TenantResolutionO
 
         var host = context.Request.Host.Host;
 
-        // Comparăm cu domeniul de bază configurat, nu luăm pur și simplu prima etichetă:
-        // altfel "api.exemplu.ro" ar fi interpretat ca tenantul "api", iar un atacator
-        // ar putea forța ce slug vrea printr-un header Host trimis de el.
+        // Matched against the configured base domain rather than just taking the first label:
+        // otherwise "api.example.com" would read as tenant "api", and since Host is a
+        // client-supplied header an attacker could pick any slug.
         var suffix = "." + settings.BaseDomain;
         if (!host.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
         {
@@ -32,7 +30,7 @@ public sealed class SubdomainTenantResolutionStrategy(IOptions<TenantResolutionO
 
         var slug = host[..^suffix.Length];
 
-        // Doar un nivel de subdomeniu: "a.b.exemplu.ro" nu e un tenant valid.
+        // One subdomain level only: "a.b.example.com" is not a valid tenant.
         return slug.Length == 0 || slug.Contains('.', StringComparison.Ordinal) ? null : slug;
     }
 }

@@ -3,13 +3,10 @@ using Microsoft.Extensions.Options;
 namespace MultiTenantSaaS.Api.MultiTenancy;
 
 /// <summary>
-/// Citește slug-ul tenantului dintr-un header HTTP (implicit <c>X-Tenant</c>).
+/// Reads the tenant slug from an HTTP header (X-Tenant by default). The only strategy usable
+/// before authentication, so it serves login. The value is client-supplied and carries no
+/// authority: the middleware ignores it as soon as a token is present.
 /// </summary>
-/// <remarks>
-/// Este singura strategie utilizabilă înainte de autentificare, deci deservește login-ul:
-/// „vreau să mă loghez la organizația acme". Valoarea vine de la client, deci nu are nicio
-/// autoritate proprie - middleware-ul o ignoră imediat ce există un token.
-/// </remarks>
 public sealed class HeaderTenantResolutionStrategy(IOptions<TenantResolutionOptions> options)
     : ITenantResolutionStrategy
 {

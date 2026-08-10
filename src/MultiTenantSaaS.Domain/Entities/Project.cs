@@ -2,7 +2,7 @@ using MultiTenantSaaS.Domain.Common;
 
 namespace MultiTenantSaaS.Domain.Entities;
 
-/// <summary>Un proiect din interiorul unei organizații. Grupează tichete.</summary>
+/// <summary>A project inside an organization. Groups tickets.</summary>
 public sealed class Project : BaseEntity, ITenantEntity
 {
     private Project()
@@ -11,25 +11,21 @@ public sealed class Project : BaseEntity, ITenantEntity
         Code = string.Empty;
     }
 
-    /// <summary>Organizația proprietară. Ștampilat automat la salvare.</summary>
     public Guid TenantId { get; private set; }
 
-    /// <summary>Numele proiectului.</summary>
     public string Name { get; private set; }
 
-    /// <summary>Cod scurt, unic în cadrul tenantului (nu global). Ex: <c>SUP</c>.</summary>
+    /// <summary>Short code, unique within the tenant rather than globally.</summary>
     public string Code { get; private set; }
 
-    /// <summary>Descriere opțională.</summary>
     public string? Description { get; private set; }
 
-    /// <summary>Dacă e <c>true</c>, proiectul e read-only și ascuns din listările implicite.</summary>
+    /// <summary>When true, the project is read-only and hidden from default listings.</summary>
     public bool IsArchived { get; private set; }
 
-    /// <summary>Utilizatorul care a creat proiectul. Referință prin ID, fără navigație între agregate.</summary>
+    // Referenced by id only: Project and User are separate aggregates.
     public Guid CreatedByUserId { get; private set; }
 
-    /// <summary>Creează un proiect nou.</summary>
     public static Project Create(string name, string code, Guid createdByUserId, string? description = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
@@ -38,12 +34,12 @@ public sealed class Project : BaseEntity, ITenantEntity
         var normalizedCode = code.Trim().ToUpperInvariant();
         if (normalizedCode.Length is < 2 or > 10)
         {
-            throw new ArgumentException("Codul proiectului are între 2 și 10 caractere.", nameof(code));
+            throw new ArgumentException("The project code must be 2 to 10 characters long.", nameof(code));
         }
 
         if (createdByUserId == Guid.Empty)
         {
-            throw new ArgumentException("Autorul proiectului este obligatoriu.", nameof(createdByUserId));
+            throw new ArgumentException("The project author is required.", nameof(createdByUserId));
         }
 
         return new Project
@@ -55,7 +51,6 @@ public sealed class Project : BaseEntity, ITenantEntity
         };
     }
 
-    /// <summary>Actualizează numele și descrierea.</summary>
     public void Update(string name, string? description)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
@@ -64,14 +59,12 @@ public sealed class Project : BaseEntity, ITenantEntity
         MarkAsUpdated();
     }
 
-    /// <summary>Arhivează proiectul.</summary>
     public void Archive()
     {
         IsArchived = true;
         MarkAsUpdated();
     }
 
-    /// <summary>Scoate proiectul din arhivă.</summary>
     public void Restore()
     {
         IsArchived = false;

@@ -19,12 +19,12 @@ public static class AuthenticationExtensions
         services.AddOptions<JwtOptions>()
             .Bind(configuration.GetSection(JwtOptions.SectionName))
             .ValidateDataAnnotations()
-            // Validarea rulează la pornire, nu la primul login: o cheie lipsă oprește
-            // deploy-ul, în loc să producă erori 500 abia când intră primul utilizator.
+            // Validated at startup, not on first login: a missing key stops the deploy instead
+            // of producing 500s when the first user arrives.
             .ValidateOnStart();
 
         var jwt = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
-            ?? throw new InvalidOperationException("Secțiunea de configurare 'Jwt' lipsește.");
+            ?? throw new InvalidOperationException("The 'Jwt' configuration section is missing.");
 
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUser, CurrentUser>();
@@ -32,8 +32,8 @@ public static class AuthenticationExtensions
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
-                // Fără maparea automată a Microsoft: "role" rămâne "role", nu devine
-                // un URI lung de schema.xmlsoap.org. Ce punem în token e ce citim din el.
+                // No inbound claim mapping: "role" stays "role" instead of becoming a long
+                // schema.xmlsoap.org URI. What we put in the token is what we read back.
                 options.MapInboundClaims = false;
 
                 options.TokenValidationParameters = new TokenValidationParameters
@@ -46,9 +46,8 @@ public static class AuthenticationExtensions
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.SigningKey)),
                     ValidateLifetime = true,
 
-                    // Implicit, .NET acceptă token-uri expirate încă 5 minute. Le reducem
-                    // la 30 de secunde: toleranța există pentru derapaj de ceas între servere,
-                    // nu ca să prelungească viața unui token revocat.
+                    // .NET accepts expired tokens for another 5 minutes by default. Reduced to
+                    // 30 seconds: the tolerance exists for clock drift, not to extend a token's life.
                     ClockSkew = TimeSpan.FromSeconds(30),
 
                     NameClaimType = JwtRegisteredClaimNames.Sub,
@@ -60,10 +59,9 @@ public static class AuthenticationExtensions
             .AddPolicy(AuthorizationPolicies.GlobalAdmin, policy =>
                 policy.RequireRole(nameof(UserRole.GlobalAdmin)))
 
-            // Policy-urile sunt cumulative: administratorul de platformă poate face tot ce
-            // poate un administrator de organizație. Le enumerăm explicit în loc să ne bazăm
-            // pe o ierarhie implicită - la un audit de securitate vrei să citești lista,
-            // nu să deduci regula.
+            // Policies are cumulative: a platform admin can do everything a tenant admin can.
+            // Listed explicitly rather than derived from an implicit hierarchy, so a security
+            // audit reads the list instead of inferring the rule.
             .AddPolicy(AuthorizationPolicies.TenantAdmin, policy =>
                 policy.RequireRole(nameof(UserRole.GlobalAdmin), nameof(UserRole.TenantAdmin)))
 

@@ -12,8 +12,8 @@ using Xunit;
 namespace MultiTenantSaaS.UnitTests.MultiTenancy;
 
 /// <summary>
-/// Verifică faptul central al Pasului 7: serviciile de CRUD nu conțin nicio verificare de
-/// tenant, iar izolarea rezistă oricum - inclusiv când ID-urile sunt ghicite corect.
+/// Verifies the central claim: the CRUD services contain no tenant check of their own, and
+/// isolation still holds, including when the caller guesses valid ids.
 /// </summary>
 public sealed class CrudIsolationTests : IDisposable
 {
@@ -43,7 +43,7 @@ public sealed class CrudIsolationTests : IDisposable
     public async Task List_ShowsOnlyCurrentTenantProjects()
     {
         await SeedAsync(AcmeId, "SUP");
-        await SeedAsync(GlobexId, "SUP"); // același cod, altă organizație: permis
+        await SeedAsync(GlobexId, "SUP"); // same code, different organization: allowed
 
         using (Scope(AcmeId))
         {
@@ -63,8 +63,8 @@ public sealed class CrudIsolationTests : IDisposable
 
         using (Scope(AcmeId))
         {
-            // COUNT-ul rulează peste același query filtrat. Cu filtrare manuală, exact aici
-            // s-ar fi uitat condiția, iar totalul ar fi spus câte rânduri are toată platforma.
+            // The count runs over the same filtered query. With manual filtering this is exactly
+            // where the condition gets forgotten, leaking the platform-wide row count.
             Assert.Equal(1, (await _projects.ListAsync(new PageRequest(), false)).TotalCount);
         }
     }
@@ -76,7 +76,7 @@ public sealed class CrudIsolationTests : IDisposable
 
         using (Scope(AcmeId))
         {
-            // ID-ul e corect și există în platformă, dar pentru Acme e inexistent.
+            // The id is valid and exists on the platform, yet for Acme it does not exist.
             await Assert.ThrowsAsync<NotFoundException>(() => _projects.GetAsync(projectId));
         }
     }
@@ -95,8 +95,8 @@ public sealed class CrudIsolationTests : IDisposable
                     Title = "Tichet strecurat"
                 }));
 
-            // Mesajul spune „nu există", nu „nu ai voie": un 403 ar confirma că ID-ul e real.
-            Assert.Contains("nu există", ex.Message, StringComparison.Ordinal);
+            // The message says "not found", not "forbidden": a 403 would confirm the id is real.
+            Assert.Contains("does not exist", ex.Message, StringComparison.Ordinal);
         }
     }
 
@@ -162,7 +162,7 @@ public sealed class CrudIsolationTests : IDisposable
         {
             var created = await _projects.CreateAsync(new CreateProjectRequest { Name = "Suport", Code = "sup" });
 
-            Assert.Equal("SUP", created.Code); // normalizat în domeniu
+            Assert.Equal("SUP", created.Code); // normalized in the domain
         }
     }
 
@@ -185,7 +185,7 @@ public sealed class CrudIsolationTests : IDisposable
 
         using (Scope(AcmeId))
         {
-            // Open -> Closed direct nu e permis de mașina de stări din entitate.
+            // Open -> Closed directly is rejected by the entity's state machine.
             await Assert.ThrowsAsync<BadRequestException>(() =>
                 _tickets.ChangeStatusAsync(ticketId, new ChangeTicketStatusRequest
                 {
@@ -223,7 +223,7 @@ public sealed class CrudIsolationTests : IDisposable
             var page = await _tickets.ListAsync(new TicketFilter(), new PageRequest { Page = 2, PageSize = 3 });
 
             Assert.Equal(3, page.Items.Count);
-            Assert.Equal(8, page.TotalCount); // 7 + tichetul creat la seed
+            Assert.Equal(8, page.TotalCount); // 7 plus the one created during seeding
             Assert.Equal(3, page.TotalPages);
             Assert.True(page.HasNextPage);
         }

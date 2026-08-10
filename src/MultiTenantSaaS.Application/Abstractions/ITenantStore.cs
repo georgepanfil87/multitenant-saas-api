@@ -2,20 +2,15 @@ using MultiTenantSaaS.Application.Common;
 
 namespace MultiTenantSaaS.Application.Abstractions;
 
-/// <summary>Caută tenanți după identificatorul extras din request.</summary>
+/// <summary>Looks up tenants by the identifier extracted from a request.</summary>
 public interface ITenantStore
 {
-    /// <summary>
-    /// Găsește un tenant după slug sau după ID (acceptă ambele forme, pentru că tokenul
-    /// poartă ID, iar headerul și subdomeniul poartă slug).
-    /// </summary>
-    /// <returns><c>null</c> dacă identificatorul nu corespunde niciunui tenant.</returns>
+    /// <summary>Finds a tenant by slug or by id: tokens carry the id, headers carry the slug.</summary>
     Task<TenantInfo?> FindAsync(string identifier, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Elimină din cache intrările pentru un tenant. Necesar imediat după onboarding:
-    /// dacă cineva a interogat slug-ul înainte de a exista, rezultatul negativ e memorat,
-    /// iar organizația nou creată ar părea inexistentă până la expirarea lui.
+    /// Drops cached entries for a tenant. Required right after onboarding, otherwise a cached
+    /// negative lookup would make the new organization look non-existent.
     /// </summary>
     void Invalidate(TenantInfo tenant);
 }

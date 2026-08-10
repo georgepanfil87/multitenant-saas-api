@@ -19,9 +19,9 @@ public sealed class ProjectConfiguration : IEntityTypeConfiguration<Project>
         builder.HasIndex(p => new { p.TenantId, p.Code }).IsUnique();
         builder.HasIndex(p => new { p.TenantId, p.CreatedAtUtc });
 
-        // Cheie alternativă (TenantId, Id): ținta compusă a cheii străine din Tickets.
-        // Fără ea, un tichet ar putea referi, la nivel de bază de date, un proiect al
-        // altui tenant - filtrele EF nu se aplică integrității referențiale.
+        // Alternate key (TenantId, Id): the composite target of the foreign key from Tickets.
+        // Without it, a ticket could reference another tenant's project at the database level,
+        // since EF filters do not apply to referential integrity.
         builder.HasAlternateKey(p => new { p.TenantId, p.Id });
 
         builder.HasOne<Tenant>()

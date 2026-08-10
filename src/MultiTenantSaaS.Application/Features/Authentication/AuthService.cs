@@ -29,21 +29,20 @@ public sealed class AuthService(
         if (!tenantContext.IsResolved)
         {
             throw new BadRequestException(
-                "Organizația nu a putut fi determinată. Trimite headerul X-Tenant cu slug-ul organizației.");
+                "The organization could not be determined. Send the X-Tenant header with the organization slug.");
         }
 
         var email = request.Email.Trim().ToLowerInvariant();
 
-        // Query filter-ul restrânge automat căutarea la tenantul curent, deci un email
-        // existent în altă organizație pur și simplu nu se vede aici.
+        // The global query filter scopes this to the current tenant, so an email that exists
+        // in another organization simply is not visible here.
         var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
 
         bool isPasswordValid;
         if (user is null)
         {
-            // Verificăm oricum, față de un hash-momeală. Fără asta, răspunsul pentru un email
-            // inexistent ar veni vizibil mai repede decât pentru unul existent, iar diferența
-            // de timp e suficientă ca să enumeri conturile organizației.
+            // Verify anyway, against a decoy hash. Otherwise the response for an unknown email
+            // returns noticeably faster, and that timing difference is enough to enumerate accounts.
             _ = passwordHasher.Verify(request.Password, DummyHash);
             isPasswordValid = false;
         }
@@ -54,12 +53,12 @@ public sealed class AuthService(
 
         if (user is null || !isPasswordValid)
         {
-            throw new AuthenticationFailedException("Email sau parolă incorecte.");
+            throw new AuthenticationFailedException("Wrong email or password.");
         }
 
         if (!user.IsActive)
         {
-            throw new AuthenticationFailedException("Contul este dezactivat.");
+            throw new AuthenticationFailedException("This account is disabled.");
         }
 
         user.RecordSuccessfulLogin();
@@ -73,10 +72,10 @@ public sealed class AuthService(
     public async Task<UserResponse> GetCurrentUserAsync(CancellationToken cancellationToken = default)
     {
         var userId = currentUser.UserId
-            ?? throw new AuthenticationFailedException("Cererea nu este autentificată.");
+            ?? throw new AuthenticationFailedException("The request is not authenticated.");
 
         var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId, cancellationToken)
-            ?? throw new NotFoundException("Utilizatorul nu mai există.");
+            ?? throw new NotFoundException("The user no longer exists.");
 
         return ToResponse(user);
     }
@@ -89,28 +88,27 @@ public sealed class AuthService(
 
         if (!tenantContext.IsResolved)
         {
-            throw new BadRequestException("Organizația nu a putut fi determinată.");
+            throw new BadRequestException("The organization could not be determined.");
         }
 
-        // Entitatea blochează deja escaladarea prin ChangeRole; aici blocăm și calea de creare.
-        // Fără asta, un TenantAdmin ar putea crea un GlobalAdmin și ar ieși din propriul tenant.
+        // The entity already blocks escalation via ChangeRole; this closes the creation path too.
         if (request.Role == UserRole.GlobalAdmin)
         {
-            throw new ForbiddenException("Rolul de GlobalAdmin nu poate fi acordat prin API.");
+            throw new ForbiddenException("The GlobalAdmin role cannot be granted through the API.");
         }
 
         var email = request.Email.Trim().ToLowerInvariant();
 
         if (await db.Users.AnyAsync(u => u.Email == email, cancellationToken))
         {
-            throw new ConflictException($"Există deja un utilizator cu emailul {email} în această organizație.");
+            throw new ConflictException($"A user with the email {email} already exists in this organization.");
         }
 
         var user = User.Create(email, passwordHasher.Hash(request.Password), request.FullName, request.Role);
 
         db.Users.Add(user);
 
-        // TenantId este completat de DbContext la salvare, nu de codul de aici.
+        // TenantId is filled in by the DbContext on save, not here.
         await db.SaveChangesAsync(cancellationToken);
 
         return ToResponse(user);
@@ -119,8 +117,8 @@ public sealed class AuthService(
     private static UserResponse ToResponse(User user) =>
         new(user.Id, user.Email, user.FullName, user.Role, user.IsActive, user.LastLoginAtUtc);
 
-    // Hash bine format, cu aceiași parametri ca unul real, deci verificarea lui costă
-    // același timp de calcul.
+    // Well-formed hash with the same parameters as a real one, so verifying it costs the
+    // same amount of work.
     private static readonly string DummyHash = string.Join('.',
         "210000", Convert.ToBase64String(new byte[16]), Convert.ToBase64String(new byte[32]));
 }

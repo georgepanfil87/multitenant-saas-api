@@ -7,8 +7,8 @@ using Xunit;
 namespace MultiTenantSaaS.UnitTests.MultiTenancy;
 
 /// <summary>
-/// Scenariile critice de izolare. Dacă vreunul dintre acestea pică, produsul are
-/// scurgere de date între clienți.
+/// The critical isolation scenarios. If any of these fails, the product leaks data between
+/// clients.
 /// </summary>
 public sealed class TenantIsolationTests : IDisposable
 {
@@ -51,8 +51,8 @@ public sealed class TenantIsolationTests : IDisposable
 
         using (_tenantContext.BeginScope(TenantA))
         {
-            // Chiar cu ID-ul exact al rândului altui tenant, rezultatul e null:
-            // filtrul se aplică înaintea căutării după cheie.
+            // Even with the exact id of another tenant's row the result is null: the filter
+            // applies before the key lookup.
             var stolen = await _db.Projects.FirstOrDefaultAsync(p => p.Id == idOfB);
 
             Assert.Null(stolen);
@@ -81,7 +81,7 @@ public sealed class TenantIsolationTests : IDisposable
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _db.SaveChangesAsync());
 
-        Assert.Contains("niciun tenant rezolvat", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("no tenant resolved", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -103,7 +103,7 @@ public sealed class TenantIsolationTests : IDisposable
 
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _db.SaveChangesAsync());
 
-            Assert.Contains("contextul curent este", ex.Message, StringComparison.Ordinal);
+            Assert.Contains("the current context is", ex.Message, StringComparison.Ordinal);
         }
     }
 
@@ -124,12 +124,12 @@ public sealed class TenantIsolationTests : IDisposable
         {
             var user = await _db.Users.SingleAsync(u => u.Id == id);
 
-            // Ocolim setter-ul privat exact cum ar face-o un bug sau un atac intern.
+            // Bypass the private setter exactly as a bug or an insider attack would.
             _db.Entry(user).Property(nameof(User.TenantId)).CurrentValue = TenantB;
 
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _db.SaveChangesAsync());
 
-            Assert.Contains("nu poate fi modificat", ex.Message, StringComparison.Ordinal);
+            Assert.Contains("cannot be changed", ex.Message, StringComparison.Ordinal);
         }
     }
 
@@ -142,10 +142,9 @@ public sealed class TenantIsolationTests : IDisposable
         {
             var project = await _db.Projects.SingleAsync(p => p.Id == id);
 
-            // Pe Project, TenantId face parte din cheia alternativă (TenantId, Id), ținta
-            // FK-ului compus din Tickets. EF Core refuză modificarea încă de la atribuire,
-            // înainte să apuce să ruleze verificarea noastră din SaveChanges. Al doilea
-            // strat de apărare, obținut din modelarea relației.
+            // On Project, TenantId is part of the (TenantId, Id) alternate key targeted by the
+            // composite foreign key from Tickets, so EF Core refuses the change at assignment
+            // time, before our SaveChanges guard runs. A second layer, for free.
             var ex = Assert.Throws<InvalidOperationException>(() =>
                 _db.Entry(project).Property(nameof(Project.TenantId)).CurrentValue = TenantB);
 

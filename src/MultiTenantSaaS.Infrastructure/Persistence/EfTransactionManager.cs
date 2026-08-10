@@ -14,7 +14,7 @@ public sealed class EfTransactionManager(ApplicationDbContext db) : ITransaction
         public Task CommitAsync(CancellationToken cancellationToken = default) =>
             transaction.CommitAsync(cancellationToken);
 
-        // Fără commit, DisposeAsync face rollback: nu putem uita să anulăm pe calea de eroare.
+        // Without a commit, DisposeAsync rolls back: the error path cannot forget to undo.
         public ValueTask DisposeAsync() => transaction.DisposeAsync();
     }
 }

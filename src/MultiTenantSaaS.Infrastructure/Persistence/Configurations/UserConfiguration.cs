@@ -17,8 +17,8 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.FullName).IsRequired().HasMaxLength(200);
         builder.Property(u => u.Role).HasConversion<int>().HasColumnName("RoleId");
 
-        // Unicitatea emailului este per tenant, nu globală: aceeași persoană poate avea
-        // cont la mai multe organizații client.
+        // Email uniqueness is per tenant, not global: the same person may hold accounts at
+        // several client organizations.
         builder.HasIndex(u => new { u.TenantId, u.Email }).IsUnique();
 
         builder.HasOne(u => u.Tenant)
@@ -26,7 +26,7 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .HasForeignKey(u => u.TenantId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // FK către tabela de lookup, fără proprietate de navigație.
+        // Foreign key to the lookup table, without a navigation property.
         builder.HasOne<Role>()
             .WithMany()
             .HasForeignKey(u => u.Role)

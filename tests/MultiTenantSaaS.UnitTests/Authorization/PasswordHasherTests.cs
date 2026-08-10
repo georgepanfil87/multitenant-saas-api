@@ -10,8 +10,8 @@ public sealed class PasswordHasherTests
     [Fact]
     public void Hash_ProducesDifferentOutputForSamePassword()
     {
-        // Salt aleatoriu per parolă: două conturi cu aceeași parolă au hash-uri diferite,
-        // deci o breșă de bază de date nu arată cine folosește aceeași parolă.
+        // Random salt per password: two accounts sharing a password get different hashes, so a
+        // database breach does not reveal who reuses passwords.
         Assert.NotEqual(_sut.Hash("aceeasi-parola"), _sut.Hash("aceeasi-parola"));
     }
 
@@ -34,7 +34,7 @@ public sealed class PasswordHasherTests
     [InlineData("210000.nu-e-base64!.a2V5")]
     public void Verify_WithMalformedHash_ReturnsFalseInsteadOfThrowing(string malformedHash)
     {
-        // Un hash corupt în baza de date trebuie să blocheze login-ul, nu să dea 500.
+        // A corrupt hash in the database must block the login, not produce a 500.
         Assert.False(_sut.Verify("orice", malformedHash));
     }
 

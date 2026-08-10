@@ -7,19 +7,15 @@ using MultiTenantSaaS.Infrastructure.Persistence;
 namespace MultiTenantSaaS.Infrastructure.MultiTenancy;
 
 /// <summary>
-/// Caută tenanți în baza de date, cu memorare în cache.
+/// Database-backed tenant lookup with caching. Resolution runs on every request, so without a
+/// cache this would add one query to the entire application. Negative results are cached too,
+/// which also blunts slug enumeration.
 /// </summary>
-/// <remarks>
-/// Cache-ul nu e optimizare prematură: rezoluția rulează la <b>fiecare</b> request, deci fără
-/// el am adăuga un query în plus pe toată aplicația. Efectul secundar important este că
-/// protejează și împotriva enumerării de slug-uri, pentru că memorăm și rezultatele negative.
-/// </remarks>
 public sealed class CachedTenantStore(ApplicationDbContext db, IMemoryCache cache) : ITenantStore
 {
     private static readonly TimeSpan HitTtl = TimeSpan.FromMinutes(5);
 
-    // Negativele expiră mai repede: un tenant nou creat trebuie să devină accesibil imediat
-    // după onboarding, nu peste cinci minute.
+    // Misses expire sooner: a freshly onboarded tenant must be reachable right away.
     private static readonly TimeSpan MissTtl = TimeSpan.FromSeconds(30);
 
     public async Task<TenantInfo?> FindAsync(string identifier, CancellationToken cancellationToken = default)
@@ -35,8 +31,8 @@ public sealed class CachedTenantStore(ApplicationDbContext db, IMemoryCache cach
             return cached;
         }
 
-        // Tenants nu implementează ITenantEntity, deci tabela nu e filtrată - exact ce
-        // ne trebuie aici, fiindcă încă nu știm cine e tenantul curent.
+        // Tenants is not an ITenantEntity, so the table is unfiltered, which is exactly what we
+        // need here: the current tenant is not known yet.
         var query = db.Tenants.AsNoTracking();
 
         var normalized = identifier.ToLowerInvariant();
@@ -57,7 +53,7 @@ public sealed class CachedTenantStore(ApplicationDbContext db, IMemoryCache cach
     {
         ArgumentNullException.ThrowIfNull(tenant);
 
-        // Tenantul e cache-uit sub ambele forme de identificator, deci le eliminăm pe ambele.
+        // The tenant is cached under both identifier forms, so drop both.
         cache.Remove($"tenant:{tenant.Slug.ToLowerInvariant()}");
         cache.Remove($"tenant:{tenant.Id.ToString().ToLowerInvariant()}");
     }

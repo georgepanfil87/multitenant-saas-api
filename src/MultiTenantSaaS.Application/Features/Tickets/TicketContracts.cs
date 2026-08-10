@@ -19,9 +19,7 @@ public sealed record TicketResponse(
 
 public sealed record CreateTicketRequest
 {
-    /// <summary>
-    /// Proiectul din organizația curentă. Un ID din altă organizație produce 404.
-    /// </summary>
+    /// <summary>A project in the current organization. An id from another one returns 404.</summary>
     [Required]
     public Guid ProjectId { get; init; }
 
@@ -59,11 +57,11 @@ public sealed record ChangeTicketStatusRequest
 
 public sealed record AssignTicketRequest
 {
-    /// <summary>Utilizator din organizația curentă, sau <c>null</c> pentru dezalocare.</summary>
+    /// <summary>A user in the current organization, or null to unassign.</summary>
     public Guid? AssignedToUserId { get; init; }
 }
 
-/// <summary>Filtre de listare. Toate se combină peste query-ul deja izolat pe tenant.</summary>
+/// <summary>Listing filters. All are applied on top of the tenant-filtered query.</summary>
 public sealed record TicketFilter
 {
     public Guid? ProjectId { get; init; }
@@ -74,7 +72,7 @@ public sealed record TicketFilter
 
     public Guid? AssignedToUserId { get; init; }
 
-    /// <summary>Căutare în titlu, case-insensitive.</summary>
+    /// <summary>Case-insensitive search in the title.</summary>
     [MaxLength(200)]
     public string? Search { get; init; }
 }

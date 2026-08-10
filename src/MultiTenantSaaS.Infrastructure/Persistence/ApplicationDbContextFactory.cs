@@ -5,12 +5,9 @@ using MultiTenantSaaS.Infrastructure.MultiTenancy;
 namespace MultiTenantSaaS.Infrastructure.Persistence;
 
 /// <summary>
-/// Permite lui <c>dotnet ef</c> să construiască contextul fără să pornească aplicația.
+/// Lets `dotnet ef` build the context without starting the application. Without it, generating
+/// a migration would require the full API to boot, authentication and tenant middleware included.
 /// </summary>
-/// <remarks>
-/// Fără această fabrică, generarea migrărilor ar necesita ca API-ul să pornească complet,
-/// inclusiv autentificarea și middleware-ul de tenant - lucruri irelevante pentru o migrare.
-/// </remarks>
 public sealed class ApplicationDbContextFactory : IDesignTimeDbContextFactory<ApplicationDbContext>
 {
     private const string DefaultDesignTimeConnection =

@@ -6,7 +6,7 @@ using MultiTenantSaaS.Domain.Enums;
 
 namespace MultiTenantSaaS.Api.Identity;
 
-/// <summary>Citește utilizatorul autentificat din claim-urile cererii curente.</summary>
+/// <summary>Reads the authenticated user from the current request's claims.</summary>
 public sealed class CurrentUser(IHttpContextAccessor accessor) : ICurrentUser
 {
     private ClaimsPrincipal? Principal => accessor.HttpContext?.User;

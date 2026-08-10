@@ -28,14 +28,10 @@ public interface ITicketService
 }
 
 /// <summary>
-/// CRUD pentru tichete, entitatea centrală a produsului.
+/// Ticket CRUD. As with projects, no tenant condition appears in this file. The interesting
+/// spots are where an id arrives in the request body (project, assignee): those existence
+/// checks run filtered, so a cross-tenant reference fails as "not found", not "forbidden".
 /// </summary>
-/// <remarks>
-/// Ca și la proiecte, nicio condiție pe <c>TenantId</c> nu apare în acest fișier.
-/// Locurile interesante sunt cele unde un ID vine din corpul cererii - proiect și
-/// responsabil: acolo verificarea de existență rulează filtrat, deci o referință
-/// către altă organizație eșuează ca „inexistent", nu ca „interzis".
-/// </remarks>
 public sealed class TicketService(IApplicationDbContext db, ICurrentUser currentUser) : ITicketService
 {
     public async Task<PagedResult<TicketResponse>> ListAsync(
@@ -69,14 +65,14 @@ public sealed class TicketService(IApplicationDbContext db, ICurrentUser current
 
         if (!string.IsNullOrWhiteSpace(filter.Search))
         {
-            // Escapăm wildcard-urile LIKE: altfel o căutare după „100%" ar returna tot.
+            // Escape LIKE wildcards, otherwise searching for "100%" would match everything.
             var search = filter.Search.Trim().ToLowerInvariant()
                 .Replace("\\", "\\\\", StringComparison.Ordinal)
                 .Replace("%", "\\%", StringComparison.Ordinal)
                 .Replace("_", "\\_", StringComparison.Ordinal);
 
-            // Like (nu ILike): ILike e specific Npgsql și ar fi adus furnizorul de bază de date
-            // în stratul Application. Insensibilitatea la majuscule o obținem cu ToLower.
+            // Like, not ILike: ILike is Npgsql-specific and would pull the database provider
+            // into the Application layer. ToLower gives case insensitivity portably.
             query = query.Where(t => EF.Functions.Like(t.Title.ToLower(), $"%{search}%", "\\"));
         }
 
@@ -92,7 +88,7 @@ public sealed class TicketService(IApplicationDbContext db, ICurrentUser current
                    .Where(t => t.Id == id)
                    .Select(Projection)
                    .FirstOrDefaultAsync(cancellationToken)
-               ?? throw new NotFoundException($"Tichetul {id} nu există.");
+               ?? throw new NotFoundException($"Ticket {id} does not exist.");
     }
 
     public async Task<TicketResponse> CreateAsync(
@@ -101,16 +97,15 @@ public sealed class TicketService(IApplicationDbContext db, ICurrentUser current
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        // Punctul critic al pasului: ProjectId vine de la client. Query-ul e filtrat pe
-        // tenant, deci proiectul altei organizații nu se găsește și primim 404 - fără
-        // nicio verificare scrisă de mână. Un 403 ar fi fost mai rău: ar fi confirmat
-        // atacatorului că ID-ul respectiv există undeva în platformă.
+        // ProjectId comes from the client. The query is tenant-filtered, so another
+        // organization's project is simply not found: 404 with no hand-written check.
+        // A 403 would be worse, confirming the id exists somewhere on the platform.
         var project = await db.Projects.FirstOrDefaultAsync(p => p.Id == request.ProjectId, cancellationToken)
-            ?? throw new NotFoundException($"Proiectul {request.ProjectId} nu există.");
+            ?? throw new NotFoundException($"Project {request.ProjectId} does not exist.");
 
         if (project.IsArchived)
         {
-            throw new BadRequestException("Nu se pot adăuga tichete într-un proiect arhivat.");
+            throw new BadRequestException("Tickets cannot be added to an archived project.");
         }
 
         var ticket = Guard(() => Ticket.Create(
@@ -157,7 +152,7 @@ public sealed class TicketService(IApplicationDbContext db, ICurrentUser current
         }
         catch (InvalidOperationException ex)
         {
-            // Tranziție nepermisă de mașina de stări din entitate: eroare a clientului.
+            // Transition rejected by the entity's state machine: a client error.
             throw new BadRequestException(ex.Message);
         }
 
@@ -177,15 +172,14 @@ public sealed class TicketService(IApplicationDbContext db, ICurrentUser current
 
         if (request.AssignedToUserId is { } assigneeId)
         {
-            // Al doilea punct critic: responsabilul trebuie să fie din aceeași organizație.
-            // Verificarea rulează filtrat, deci un utilizator străin apare ca inexistent.
-            // Este invariantul între agregate pe care entitatea nu-l putea verifica singură.
+            // The assignee must belong to the same organization. This filtered check is the
+            // cross-aggregate invariant the entity could not enforce on its own.
             var exists = await db.Users.AnyAsync(
                 u => u.Id == assigneeId && u.IsActive, cancellationToken);
 
             if (!exists)
             {
-                throw new NotFoundException($"Utilizatorul {assigneeId} nu există în această organizație.");
+                throw new NotFoundException($"User {assigneeId} does not exist in this organization.");
             }
         }
 
@@ -210,7 +204,7 @@ public sealed class TicketService(IApplicationDbContext db, ICurrentUser current
 
     private async Task<Ticket> LoadAsync(Guid id, CancellationToken cancellationToken) =>
         await db.Tickets.FirstOrDefaultAsync(t => t.Id == id, cancellationToken)
-        ?? throw new NotFoundException($"Tichetul {id} nu există.");
+        ?? throw new NotFoundException($"Ticket {id} does not exist.");
 
     private async Task<string> ProjectCodeAsync(Guid projectId, CancellationToken cancellationToken) =>
         await db.Projects.AsNoTracking()
@@ -219,7 +213,7 @@ public sealed class TicketService(IApplicationDbContext db, ICurrentUser current
             .FirstOrDefaultAsync(cancellationToken) ?? string.Empty;
 
     private Guid RequireUserId() =>
-        currentUser.UserId ?? throw new AuthenticationFailedException("Cererea nu este autentificată.");
+        currentUser.UserId ?? throw new AuthenticationFailedException("The request is not authenticated.");
 
     private static T Guard<T>(Func<T> action)
     {
@@ -233,8 +227,9 @@ public sealed class TicketService(IApplicationDbContext db, ICurrentUser current
         }
     }
 
-    // Arbore de expresie, nu metodă: EF Core traduce asta în SELECT cu JOIN spre Projects.
-    // Ca apel de metodă, EF n-ar putea să-l traducă și ar evalua pe client, cu Project null.
+    // An expression tree, not a method: EF Core translates this into a SELECT with a JOIN.
+    // As a method call it could not be translated and would evaluate client-side, with a
+    // null Project navigation.
     private static readonly Expression<Func<Ticket, TicketResponse>> Projection = t =>
         new TicketResponse(t.Id, t.ProjectId, t.Project!.Code, t.Title, t.Description, t.Status,
             t.Priority, t.AssignedToUserId, t.CreatedByUserId, t.DueDateUtc, t.ClosedAtUtc, t.CreatedAtUtc);

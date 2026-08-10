@@ -3,13 +3,10 @@ using MultiTenantSaaS.Application.Common;
 namespace MultiTenantSaaS.Api.MultiTenancy;
 
 /// <summary>
-/// Citește tenantul din claim-ul <c>tenant_id</c> al JWT-ului. Sursa autoritară pentru
-/// orice cerere autentificată.
+/// Reads the tenant from the JWT tenant_id claim. Authoritative for authenticated requests.
+/// Requires UseAuthentication() to have run: otherwise the user is anonymous and this returns
+/// null silently, which is why pipeline order matters.
 /// </summary>
-/// <remarks>
-/// Depinde de <c>UseAuthentication()</c> să fi rulat deja: altfel <c>context.User</c> este
-/// anonim și strategia returnează <c>null</c> în tăcere. De aceea ordinea din pipeline conteaza.
-/// </remarks>
 public sealed class ClaimTenantResolutionStrategy : ITenantResolutionStrategy
 {
     public TenantIdentifierSource Source => TenantIdentifierSource.Token;

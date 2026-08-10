@@ -1,6 +1,6 @@
 namespace MultiTenantSaaS.Domain.Enums;
 
-/// <summary>Urgența unui tichet.</summary>
+/// <summary>Urgency of a ticket.</summary>
 public enum TicketPriority
 {
     Low = 1,

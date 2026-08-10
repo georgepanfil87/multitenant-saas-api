@@ -18,7 +18,7 @@ public sealed record CreateProjectRequest
     [MaxLength(200)]
     public string Name { get; init; } = string.Empty;
 
-    /// <summary>Cod scurt, unic în cadrul organizației. Ex: <c>SUP</c>.</summary>
+    /// <summary>Short code, unique within the organization. Example: SUP.</summary>
     [Required]
     [MinLength(2)]
     [MaxLength(10)]

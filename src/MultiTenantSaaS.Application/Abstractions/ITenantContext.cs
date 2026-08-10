@@ -1,31 +1,21 @@
 namespace MultiTenantSaaS.Application.Abstractions;
 
 /// <summary>
-/// Tenantul asociat operațiunii curente. Este sursa unică de adevăr pentru izolarea datelor:
-/// query filter-ul din DbContext și ștampilarea <c>TenantId</c> la salvare citesc de aici.
+/// The tenant of the current operation. Single source of truth for isolation: the query filter
+/// and the TenantId stamping both read from here.
 /// </summary>
-/// <remarks>
-/// Declarată în Application, implementată în Infrastructure. Astfel testele pot injecta
-/// un tenant fix fără să pornească un server HTTP.
-/// </remarks>
 public interface ITenantContext
 {
-    /// <summary>
-    /// Tenantul curent, sau <c>null</c> dacă nu s-a rezolvat niciunul (request public,
-    /// job de background, migrare). <c>null</c> înseamnă „niciun rând vizibil", nu „toate".
-    /// </summary>
+    /// <summary>Current tenant, or null when none was resolved. Null means "no rows", not "all rows".</summary>
     Guid? TenantId { get; }
 
-    /// <summary>Slug-ul tenantului curent, pentru logare și mesaje de eroare.</summary>
     string? TenantSlug { get; }
 
-    /// <summary>Dacă există un tenant rezolvat pentru operațiunea curentă.</summary>
     bool IsResolved { get; }
 
     /// <summary>
-    /// Stabilește tenantul curent până la eliberarea obiectului returnat. Singura cale de
-    /// mutare a contextului: middleware-ul de rezoluție (Pas 4) și onboarding-ul (Pas 6)
-    /// o folosesc, restul aplicației doar citește.
+    /// Sets the current tenant until the returned object is disposed. The only mutation path:
+    /// used by the resolution middleware and by tenant onboarding.
     /// </summary>
     IDisposable BeginScope(Guid tenantId, string? tenantSlug = null);
 }

@@ -8,20 +8,11 @@ using Testcontainers.PostgreSql;
 namespace MultiTenantSaaS.IntegrationTests;
 
 /// <summary>
-/// Pornește API-ul complet peste un PostgreSQL real, rulat într-un container efemer.
+/// Boots the full API against a real PostgreSQL running in a throwaway container. Unit tests
+/// use the in-memory provider, which is fast but has no SQL, foreign keys or transactions.
+/// These tests also go through the complete HTTP pipeline, covering model binding,
+/// authentication and the tenant middleware.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Testele unitare folosesc provider-ul in-memory, care e rapid dar minte: nu are SQL,
-/// nu are chei străine, nu are tranzacții. Aici rulăm exact motorul din producție, deci
-/// prindem clasa de probleme care apar doar la traducerea în SQL - proiecții netraductibile,
-/// constrângeri compuse, comportamentul <c>timestamptz</c>.
-/// </para>
-/// <para>
-/// Aceste teste trec și prin pipeline-ul HTTP complet, deci acoperă și model binding-ul,
-/// autentificarea și middleware-ul de tenant - lucruri invizibile pentru un test unitar.
-/// </para>
-/// </remarks>
 public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
@@ -35,8 +26,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     {
         await _postgres.StartAsync();
 
-        // Aplicăm migrările pe baza de date proaspătă: testăm și că migrările chiar rulează,
-        // nu doar că modelul EF e coerent.
+        // Migrate the fresh database: this also proves the migrations themselves run, not just
+        // that the EF model is self-consistent.
         using var scope = Services.CreateScope();
         await scope.ServiceProvider.GetRequiredService<ApplicationDbContext>()
             .Database.MigrateAsync();
@@ -54,19 +45,17 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
         builder.UseEnvironment("Testing");
 
-        // UseSetting, nu ConfigureAppConfiguration: la minimal hosting, Program.cs citește
-        // configurația în timpul propriei execuții, adică ÎNAINTE ca delegatele de
-        // ConfigureAppConfiguration să apuce să ruleze. UseSetting scrie direct în
-        // configurația gazdei, disponibilă de la bun început.
+        // UseSetting, not ConfigureAppConfiguration: with minimal hosting, Program.cs reads
+        // configuration during its own execution, before ConfigureAppConfiguration delegates run.
+        // UseSetting writes straight into host configuration, available from the start.
         builder.UseSetting("ConnectionStrings:DefaultConnection", _postgres.GetConnectionString());
         builder.UseSetting("Jwt:Issuer", "MultiTenantSaaS.Tests");
         builder.UseSetting("Jwt:Audience", "MultiTenantSaaS.Tests.Clients");
         builder.UseSetting("Jwt:SigningKey", "cheie-de-test-suficient-de-lunga-pentru-hmac-sha256");
         builder.UseSetting("Jwt:AccessTokenMinutes", "60");
 
-        // Cote mari intenționat: aceste teste verifică izolarea, nu limitarea. Rate
-        // limiting-ul are teste proprii pe rezolvarea cotei; aici ar produce doar teste
-        // instabile, dependente de câte cereri a făcut testul anterior.
+        // Deliberately high quotas: these tests verify isolation, not throttling. Rate limiting
+        // has its own tests; here it would only make results depend on test ordering.
         builder.UseSetting("RateLimiting:FreePerMinute", "100000");
         builder.UseSetting("RateLimiting:AnonymousPerMinute", "100000");
         builder.UseSetting("RateLimiting:RegistrationsPerHour", "1000");

@@ -8,7 +8,7 @@ using MultiTenantSaaS.Infrastructure.Persistence;
 
 namespace MultiTenantSaaS.Infrastructure;
 
-/// <summary>Punctul unic prin care API-ul înregistrează serviciile de infrastructură.</summary>
+/// <summary>Single entry point for registering infrastructure services.</summary>
 public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(
@@ -17,10 +17,10 @@ public static class DependencyInjection
     {
         var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException(
-                "Connection string-ul 'DefaultConnection' lipsește din configurație.");
+                "The 'DefaultConnection' connection string is missing from configuration.");
 
-        // Scoped: un tenant per request. Singleton ar amesteca tenanții între cereri
-        // concurente, iar Transient ar da fiecărei dependințe alt tenant în același request.
+        // Scoped: one tenant per request. A singleton would mix tenants across concurrent
+        // requests; transient would give each dependency a different tenant within one request.
         services.AddScoped<ITenantContext, TenantContext>();
         services.AddMemoryCache();
         services.AddScoped<ITenantStore, CachedTenantStore>();

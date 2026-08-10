@@ -1,18 +1,17 @@
 namespace MultiTenantSaaS.Domain.Enums;
 
-/// <summary>Nivelele de acces din platformă.</summary>
-/// <remarks>
-/// Valorile sunt numerotate explicit pentru că se persistă ca <c>Users.RoleId</c>.
-/// Nu reordona și nu reutiliza o valoare existentă: ar schimba în tăcere rolul userilor existenți.
-/// </remarks>
+/// <summary>Access levels available across the platform.</summary>
 public enum UserRole
 {
-    /// <summary>Administrator de platformă. Singurul rol care poate trece granița de tenant.</summary>
+    // Values are explicit because they are persisted as Users.RoleId.
+    // Never reorder or reuse a value: it would silently change existing users' roles.
+
+    /// <summary>Platform administrator. The only role that can cross tenant boundaries.</summary>
     GlobalAdmin = 1,
 
-    /// <summary>Administrator al organizației client. Putere deplină doar în interiorul tenantului său.</summary>
+    /// <summary>Administrator of a client organization, scoped to that organization.</summary>
     TenantAdmin = 2,
 
-    /// <summary>Utilizator obișnuit al organizației.</summary>
+    /// <summary>Regular member of a client organization.</summary>
     Member = 3
 }

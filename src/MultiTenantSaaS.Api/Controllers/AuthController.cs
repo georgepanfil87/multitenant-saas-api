@@ -5,23 +5,20 @@ using MultiTenantSaaS.Application.Features.Authentication;
 
 namespace MultiTenantSaaS.Api.Controllers;
 
-/// <summary>Autentificare și date despre contul curent.</summary>
+/// <summary>Authentication and current account details.</summary>
 [ApiController]
 [Route("api/auth")]
 [Produces("application/json")]
 public sealed class AuthController(IAuthService authService) : ControllerBase
 {
-    /// <summary>
-    /// Autentifică un utilizator în organizația determinată din cerere și returnează un JWT.
-    /// </summary>
+    /// <summary>Authenticates a user in the organization resolved from the request.</summary>
     /// <remarks>
-    /// Organizația se trimite prin headerul <c>X-Tenant</c> (ex: <c>X-Tenant: acme</c>).
-    /// Același email poate exista în mai multe organizații, deci fără el nu putem ști
-    /// la care dintre ele se autentifică utilizatorul.
+    /// Send the organization in the X-Tenant header (for example: acme). The same email may
+    /// exist in several organizations, so without it we cannot tell which one to sign in to.
     /// </remarks>
-    /// <response code="200">Autentificare reușită.</response>
-    /// <response code="400">Organizația nu a putut fi determinată.</response>
-    /// <response code="401">Email sau parolă incorecte.</response>
+    /// <response code="200">Authenticated.</response>
+    /// <response code="400">The organization could not be resolved.</response>
+    /// <response code="401">Wrong email or password.</response>
     [HttpPost("login")]
     [AllowAnonymous]
     [ProducesResponseType<AuthResponse>(StatusCodes.Status200OK)]
@@ -32,7 +29,7 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
         CancellationToken cancellationToken)
         => Ok(await authService.LoginAsync(request, cancellationToken));
 
-    /// <summary>Returnează contul autentificat curent.</summary>
+    /// <summary>Returns the currently authenticated account.</summary>
     [HttpGet("me")]
     [Authorize(Policy = AuthorizationPolicies.Member)]
     [ProducesResponseType<UserResponse>(StatusCodes.Status200OK)]

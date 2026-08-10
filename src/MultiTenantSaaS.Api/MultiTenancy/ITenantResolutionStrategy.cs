@@ -1,24 +1,24 @@
 namespace MultiTenantSaaS.Api.MultiTenancy;
 
-/// <summary>De unde provine identificatorul de tenant. Determină cât de mult îl credem.</summary>
+/// <summary>Where a tenant identifier came from. Determines how much it is trusted.</summary>
 public enum TenantIdentifierSource
 {
-    /// <summary>Din claim-ul unui JWT semnat de noi. Singura sursă care nu poate fi falsificată.</summary>
+    /// <summary>A claim in a JWT we signed. The only source that cannot be forged.</summary>
     Token = 1,
 
-    /// <summary>Dintr-un header HTTP. Controlat integral de client.</summary>
+    /// <summary>An HTTP header. Fully controlled by the client.</summary>
     Header = 2,
 
-    /// <summary>Din subdomeniul cererii. Controlat de client, dar constrâns de DNS.</summary>
+    /// <summary>The request subdomain. Client-controlled, but constrained by DNS.</summary>
     Subdomain = 3
 }
 
-/// <summary>Extrage identificatorul de tenant dintr-un request HTTP.</summary>
+/// <summary>Extracts a tenant identifier from an HTTP request.</summary>
 public interface ITenantResolutionStrategy
 {
-    /// <summary>Sursa acoperită de această strategie.</summary>
+    /// <summary>The source this strategy covers.</summary>
     TenantIdentifierSource Source { get; }
 
-    /// <summary>Identificatorul găsit, sau <c>null</c> dacă strategia nu se aplică cererii.</summary>
+    /// <summary>The identifier found, or null if the strategy does not apply.</summary>
     string? TryResolve(HttpContext context);
 }

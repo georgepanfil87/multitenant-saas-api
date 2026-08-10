@@ -32,10 +32,9 @@ public static class RateLimitingExtensions
                     return RateLimitPartition.GetNoLimiter("skip");
                 }
 
-                // Partiția e cheia întregului pas: fiecare organizație are propriul limitator,
-                // deci un client care abuzează își consumă doar propria cotă. Cu un limitator
-                // global unic, un singur tenant agresiv ar bloca toți ceilalți clienți -
-                // exact „noisy neighbour"-ul pe care multi-tenancy trebuie să-l prevină.
+                // Each organization gets its own limiter, so an abusive client only burns its
+                // own quota. With a single global limiter, one aggressive tenant would throttle
+                // everyone else: the noisy-neighbour problem multi-tenancy must prevent.
                 var tenant = context.Features.Get<TenantInfo>();
 
                 if (tenant is not null)
@@ -43,19 +42,19 @@ public static class RateLimitingExtensions
                     return CreatePartition($"tenant:{tenant.Id}", options.ResolveLimit(tenant));
                 }
 
-                // Cerere fără tenant (login, înregistrare, sondă): partiționăm pe IP.
-                var ip = context.Connection.RemoteIpAddress?.ToString() ?? "necunoscut";
+                // Tenant-less request (login, signup, probe): partition by IP address.
+                var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
                 return CreatePartition($"ip:{ip}", options.AnonymousPerMinute);
             });
 
-            // Cotă separată pentru crearea de organizații: fără ea, un script ar putea genera
-            // mii de tenanți. Se aplică peste limitatorul global, nu în locul lui.
+            // Separate quota for creating organizations: without it a script could generate
+            // thousands of tenants. Applied on top of the global limiter, not instead of it.
             limiter.AddPolicy(RateLimitOptions.RegistrationPolicy, context =>
             {
                 var options = context.RequestServices
                     .GetRequiredService<IOptions<RateLimitOptions>>().Value;
 
-                var ip = context.Connection.RemoteIpAddress?.ToString() ?? "necunoscut";
+                var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
                 return RateLimitPartition.GetFixedWindowLimiter($"register:{ip}", _ =>
                     new FixedWindowRateLimiterOptions
@@ -68,8 +67,8 @@ public static class RateLimitingExtensions
 
             limiter.OnRejected = async (context, cancellationToken) =>
             {
-                // Retry-After îi spune clientului exact cât să aștepte. Fără el, clienții
-                // reîncearcă imediat și amplifică problema pe care tocmai am limitat-o.
+                // Retry-After tells the client exactly how long to wait. Without it, clients
+                // retry immediately and amplify the very problem we just throttled.
                 if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
                 {
                     context.HttpContext.Response.Headers.RetryAfter =
@@ -77,8 +76,8 @@ public static class RateLimitingExtensions
                 }
 
                 await Results.Problem(
-                        title: "Prea multe cereri",
-                        detail: "Cota organizației a fost depășită. Reîncearcă mai târziu.",
+                        title: "Too many requests",
+                        detail: "The organization quota has been exceeded. Try again later.",
                         statusCode: StatusCodes.Status429TooManyRequests)
                     .ExecuteAsync(context.HttpContext);
             };
@@ -90,17 +89,17 @@ public static class RateLimitingExtensions
     private static RateLimitPartition<string> CreatePartition(string key, int requestsPerMinute) =>
         RateLimitPartition.GetTokenBucketLimiter(key, _ => new TokenBucketRateLimiterOptions
         {
-            // Capacitatea găleții = rafala permisă. O pagină care declanșează 10 apeluri
-            // deodată trebuie să treacă; ce nu trebuie să treacă e ritmul susținut.
+            // Bucket capacity is the allowed burst. A page firing 10 calls at once should pass;
+            // what must not pass is a sustained rate above the quota.
             TokenLimit = requestsPerMinute,
 
-            // Realimentare la fiecare secundă, nu o dată pe minut: altfel ar fi un fixed
-            // window deghizat, cu toată cota disponibilă instantaneu la începutul minutului.
+            // Refilled every second, not once a minute: otherwise this is a fixed window in
+            // disguise, with the whole quota available instantly at the top of each minute.
             ReplenishmentPeriod = TimeSpan.FromSeconds(1),
             TokensPerPeriod = Math.Max(1, requestsPerMinute / 60),
 
-            // Fără coadă: preferăm un 429 imediat, pe care clientul îl poate trata,
-            // în locul unei cereri ținute în așteptare, care arată ca o aplicație lentă.
+            // No queue: an immediate 429 the client can handle beats a request held in wait,
+            // which just looks like a slow application.
             QueueLimit = 0,
             AutoReplenishment = true
         });

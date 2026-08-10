@@ -1,17 +1,14 @@
 namespace MultiTenantSaaS.Application.Common;
 
-/// <summary>
-/// Numele policy-urilor de autorizare. Constante, ca o greșeală de scriere să fie eroare
-/// de compilare, nu un endpoint care rămâne accidental deschis.
-/// </summary>
+/// <summary>Authorization policy names, as constants so a typo fails the build.</summary>
 public static class AuthorizationPolicies
 {
-    /// <summary>Doar administratori de platformă.</summary>
+    /// <summary>Platform administrators only.</summary>
     public const string GlobalAdmin = "GlobalAdmin";
 
-    /// <summary>Administratori de organizație și, implicit, administratorii de platformă.</summary>
+    /// <summary>Organization administrators, plus platform administrators.</summary>
     public const string TenantAdmin = "TenantAdmin";
 
-    /// <summary>Orice utilizator autentificat, cu un rol valid.</summary>
+    /// <summary>Any authenticated user with a valid role.</summary>
     public const string Member = "Member";
 }

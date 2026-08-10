@@ -17,17 +17,17 @@ public sealed class TicketConfiguration : IEntityTypeConfiguration<Ticket>
         builder.Property(t => t.Status).HasConversion<int>();
         builder.Property(t => t.Priority).HasConversion<int>();
 
-        // Indexuri prefixate cu TenantId, fiindcă query filter-ul adaugă întotdeauna
-        // TenantId = @p în WHERE. Un index doar pe Status ar fi inutilizabil aici.
+        // Indexes are prefixed with TenantId because the query filter always adds
+        // TenantId = @p to the WHERE clause. An index on Status alone would be unusable.
         builder.HasIndex(t => new { t.TenantId, t.ProjectId });
         builder.HasIndex(t => new { t.TenantId, t.Status });
         builder.HasIndex(t => new { t.TenantId, t.AssignedToUserId });
 
-        // Susține ordonarea implicită a listării (cele mai noi întâi) fără sortare în memorie.
+        // Supports the default listing order (newest first) without an in-memory sort.
         builder.HasIndex(t => new { t.TenantId, t.CreatedAtUtc });
 
-        // Cheie străină compusă către (TenantId, Id) din Projects: PostgreSQL însuși
-        // respinge un tichet care referă proiectul altui tenant.
+        // Composite foreign key to Projects (TenantId, Id): PostgreSQL itself rejects a ticket
+        // that references another tenant's project.
         builder.HasOne(t => t.Project)
             .WithMany()
             .HasForeignKey(t => new { t.TenantId, t.ProjectId })

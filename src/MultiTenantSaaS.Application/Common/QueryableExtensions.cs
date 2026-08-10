@@ -5,13 +5,10 @@ namespace MultiTenantSaaS.Application.Common;
 public static class QueryableExtensions
 {
     /// <summary>
-    /// Execută numărarea și pagina într-un query deja filtrat pe tenant.
+    /// Runs the count and the page over an already tenant-filtered query. No tenant condition is
+    /// added here: the count inherits the global query filter, so the total cannot leak other
+    /// tenants' row counts.
     /// </summary>
-    /// <remarks>
-    /// Nu adaugă nicio condiție de tenant: aceasta vine din global query filter, deci
-    /// și <c>COUNT</c>-ul e automat per tenant. Dacă filtrarea ar fi fost manuală,
-    /// exact aici s-ar fi uitat - iar totalul ar fi scurs numărul de rânduri al tuturor clienților.
-    /// </remarks>
     public static async Task<PagedResult<TResult>> ToPagedResultAsync<TResult>(
         this IQueryable<TResult> query,
         PageRequest page,
@@ -21,7 +18,7 @@ public static class QueryableExtensions
         ArgumentNullException.ThrowIfNull(page);
 
         var totalCount = await query.CountAsync(cancellationToken);
-        var items = await query.Skip(page.Skip).Take(page.PageSize).ToListAsync(cancellationToken);
+        var items = await query.Skip(page.Skip()).Take(page.PageSize).ToListAsync(cancellationToken);
 
         return new PagedResult<TResult>(items, page.Page, page.PageSize, totalCount);
     }

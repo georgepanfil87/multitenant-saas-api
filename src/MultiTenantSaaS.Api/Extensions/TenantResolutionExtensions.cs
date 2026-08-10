@@ -12,8 +12,8 @@ public static class TenantResolutionExtensions
         services.Configure<TenantResolutionOptions>(
             configuration.GetSection(TenantResolutionOptions.SectionName));
 
-        // Ordinea înregistrării contează: middleware-ul consumă IEnumerable<ITenantResolutionStrategy>
-        // și ia prima strategie non-token care întoarce ceva.
+        // Registration order matters: the middleware takes the first non-token strategy that
+        // returns a value.
         services.AddSingleton<ITenantResolutionStrategy, ClaimTenantResolutionStrategy>();
         services.AddSingleton<ITenantResolutionStrategy, HeaderTenantResolutionStrategy>();
         services.AddSingleton<ITenantResolutionStrategy, SubdomainTenantResolutionStrategy>();
@@ -22,8 +22,8 @@ public static class TenantResolutionExtensions
     }
 
     /// <summary>
-    /// Trebuie apelat <b>după</b> <c>UseAuthentication()</c>, altfel claim-urile nu sunt încă
-    /// populate și tenantul ar fi luat din header chiar și pentru cereri autentificate.
+    /// Must be called after UseAuthentication(), otherwise claims are not populated yet and the
+    /// tenant would come from the header even for authenticated requests.
     /// </summary>
     public static IApplicationBuilder UseTenantResolution(this IApplicationBuilder app) =>
         app.UseMiddleware<TenantResolutionMiddleware>();

@@ -363,8 +363,8 @@ dotnet_naming_style.s_camelcase.word_separator =
 dotnet_naming_style.s_camelcase.capitalization = camel_case
 
 
-# Migrările sunt cod generat de EF Core: le reformatăm la fiecare regenerare,
-# deci regulile de stil și de performanță nu au ce corecta acolo.
+# Migrations are EF Core generated code, rewritten on every regeneration, so style and
+# performance rules have nothing to fix there.
 [**/Migrations/*.cs]
 generated_code = true
 dotnet_analyzer_diagnostic.severity = none

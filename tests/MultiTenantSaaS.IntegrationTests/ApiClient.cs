@@ -4,14 +4,14 @@ using System.Text.Json;
 
 namespace MultiTenantSaaS.IntegrationTests;
 
-/// <summary>Helper peste <see cref="HttpClient"/>, ca testele să citească a scenariu, nu a plumbărie.</summary>
+/// <summary>Thin wrapper over <see cref="HttpClient"/> so tests read as scenarios, not plumbing.</summary>
 public sealed class ApiClient(HttpClient http)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     public HttpClient Http => http;
 
-    /// <summary>Înregistrează o organizație nouă și returnează un client autentificat ca admin al ei.</summary>
+    /// <summary>Registers an organization and returns a client authenticated as its admin.</summary>
     public static async Task<(ApiClient Client, JsonElement Tenant, JsonElement Admin)> RegisterTenantAsync(
         ApiFactory factory, string slug)
     {

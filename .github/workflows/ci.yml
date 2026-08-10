@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      # Warnings as errors in CI only: does not block local development, but keeps new
+      # warnings off main.
+      - name: Build
+        run: dotnet build --no-restore --configuration Release -warnaserror
+
+      # Integration tests start PostgreSQL through Testcontainers; the GitHub runner has
+      # Docker available, so no separate service declaration is needed.
+      - name: Test
+        run: dotnet test --no-build --configuration Release --verbosity normal
+
+      - name: Build Docker image
+        run: docker build -t multitenant-saas-api:${{ github.sha }} .

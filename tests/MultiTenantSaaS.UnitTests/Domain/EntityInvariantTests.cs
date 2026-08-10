@@ -5,8 +5,8 @@ using Xunit;
 namespace MultiTenantSaaS.UnitTests.Domain;
 
 /// <summary>
-/// Invarianții care trebuie să reziste indiferent de calea de intrare: controller, job de
-/// import sau seed. De aceea trăiesc în entități, nu în servicii.
+/// Invariants that must hold regardless of entry path: controller, import job or seeder.
+/// That is why they live in the entities rather than in services.
 /// </summary>
 public sealed class EntityInvariantTests
 {
@@ -14,11 +14,11 @@ public sealed class EntityInvariantTests
     [InlineData("acme-corp", true)]
     [InlineData("acme", true)]
     [InlineData("a1b", true)]
-    [InlineData("ab", false)]          // sub 3 caractere
-    [InlineData("-acme", false)]       // nu poate începe cu cratimă
-    [InlineData("acme-", false)]       // nici să se termine
-    [InlineData("Acme Corp", false)]   // fără spații sau majuscule
-    [InlineData("acme_corp", false)]   // underscore nu e valid în DNS
+    [InlineData("ab", false)]          // under 3 characters
+    [InlineData("-acme", false)]       // cannot start with a hyphen
+    [InlineData("acme-", false)]       // nor end with one
+    [InlineData("Acme Corp", false)]   // no spaces or uppercase
+    [InlineData("acme_corp", false)]   // underscore is not valid in DNS
     public void Tenant_Slug_FollowsDnsLabelRules(string slug, bool isValid)
     {
         if (isValid)
@@ -60,15 +60,15 @@ public sealed class EntityInvariantTests
     [Fact]
     public void User_Email_IsNormalizedToLowercase()
     {
-        // Fără normalizare, indexul unic (TenantId, Email) ar lăsa să treacă
-        // „George@acme.ro" și „george@acme.ro" ca două conturi distincte.
+        // Without normalization the (TenantId, Email) unique index would let
+        // "George@acme.ro" and "george@acme.ro" through as two distinct accounts.
         Assert.Equal("george@acme.ro", User.Create(" George@Acme.RO ", "hash", "George").Email);
     }
 
     [Fact]
     public void User_NewAccount_HasNoTenantUntilSaved()
     {
-        // TenantId e ștampilat de DbContext, nu de codul de aplicație.
+        // TenantId is stamped by the DbContext, not by application code.
         Assert.Equal(Guid.Empty, User.Create("a@b.ro", "hash", "A B").TenantId);
     }
 
@@ -77,8 +77,8 @@ public sealed class EntityInvariantTests
     {
         var user = User.Create("a@b.ro", "hash", "A B");
 
-        // Invariantul de securitate al platformei: un TenantAdmin nu se poate ridica
-        // singur la administrator global, deci nu poate ieși din propriul tenant.
+        // Platform security invariant: a TenantAdmin cannot promote themselves to global
+        // administrator, so they cannot escape their own tenant.
         Assert.Throws<InvalidOperationException>(() => user.ChangeRole(UserRole.GlobalAdmin));
 
         user.ChangeRole(UserRole.TenantAdmin);
@@ -102,8 +102,8 @@ public sealed class EntityInvariantTests
     }
 
     [Theory]
-    [InlineData("S")]                 // prea scurt
-    [InlineData("PREA-LUNG-COD")]     // peste 10 caractere
+    [InlineData("S")]                 // too short
+    [InlineData("PREA-LUNG-COD")]     // over 10 characters
     public void Project_Code_HasLengthLimits(string code)
     {
         Assert.Throws<ArgumentException>(() => Project.Create("Proiect", code, Guid.NewGuid()));
@@ -129,11 +129,11 @@ public sealed class EntityInvariantTests
     [Theory]
     [InlineData(TicketStatus.Open, TicketStatus.InProgress, true)]
     [InlineData(TicketStatus.Open, TicketStatus.Resolved, true)]
-    [InlineData(TicketStatus.Open, TicketStatus.Closed, false)]      // nu se sare peste rezolvare
+    [InlineData(TicketStatus.Open, TicketStatus.Closed, false)]      // cannot skip resolution
     [InlineData(TicketStatus.InProgress, TicketStatus.Open, true)]
     [InlineData(TicketStatus.InProgress, TicketStatus.Closed, false)]
     [InlineData(TicketStatus.Resolved, TicketStatus.Closed, true)]
-    [InlineData(TicketStatus.Resolved, TicketStatus.InProgress, true)] // respins la verificare
+    [InlineData(TicketStatus.Resolved, TicketStatus.InProgress, true)] // rejected on verification
     public void Ticket_StatusTransitions_FollowLifecycle(
         TicketStatus from, TicketStatus to, bool isAllowed)
     {
@@ -176,7 +176,7 @@ public sealed class EntityInvariantTests
     {
         var ticket = Ticket.Create(Guid.NewGuid(), "Titlu", Guid.NewGuid());
 
-        // Guid.Empty ar fi o alocare către „nimeni" care arată ca o alocare reală.
+        // Guid.Empty would be an assignment to "nobody" that looks like a real one.
         Assert.Throws<ArgumentException>(() => ticket.AssignTo(Guid.Empty));
 
         ticket.AssignTo(null);

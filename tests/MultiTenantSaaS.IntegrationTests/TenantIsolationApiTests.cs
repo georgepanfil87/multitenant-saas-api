@@ -7,9 +7,8 @@ using Xunit;
 namespace MultiTenantSaaS.IntegrationTests;
 
 /// <summary>
-/// Izolarea între organizații, verificată prin HTTP, peste PostgreSQL real.
-/// Fiecare test din clasa asta corespunde unui mod concret în care un SaaS multi-tenant
-/// scurge date în producție.
+/// Cross-organization isolation, verified over HTTP against a real PostgreSQL. Each test here
+/// maps to a concrete way multi-tenant systems leak data in production.
 /// </summary>
 [Collection(nameof(ApiCollection))]
 public sealed class TenantIsolationApiTests(ApiFactory factory)
@@ -24,7 +23,7 @@ public sealed class TenantIsolationApiTests(ApiFactory factory)
 
         var betaProjects = await beta.GetJsonAsync("/api/projects");
 
-        // Beta are doar proiectul „GEN" creat automat la onboarding, nimic de la Alfa.
+        // Beta only has the "GEN" project created during onboarding, nothing from Alfa.
         var codes = betaProjects.GetProperty("items").EnumerateArray()
             .Select(p => p.GetProperty("code").GetString()).ToList();
 
@@ -43,7 +42,7 @@ public sealed class TenantIsolationApiTests(ApiFactory factory)
 
         var response = await beta.GetAsync($"/api/projects/{id}");
 
-        // 404, nu 403: un 403 ar confirma că ID-ul există undeva în platformă.
+        // 404, not 403: a 403 would confirm the id exists somewhere on the platform.
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
@@ -124,8 +123,8 @@ public sealed class TenantIsolationApiTests(ApiFactory factory)
         var duplicate = await alfa.PostAsync("/api/projects", new { name = "Alt suport", code = "SUP" });
 
         Assert.Equal(HttpStatusCode.Created, first.StatusCode);
-        Assert.Equal(HttpStatusCode.Created, second.StatusCode);   // altă organizație: permis
-        Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode); // aceeași: respins
+        Assert.Equal(HttpStatusCode.Created, second.StatusCode);   // other organization: allowed
+        Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode); // same one: rejected
     }
 
     [Fact]
@@ -164,17 +163,16 @@ public sealed class TenantIsolationApiTests(ApiFactory factory)
 
         Assert.Equal(0, (await alfa.GetJsonAsync("/api/tickets")).GetProperty("totalCount").GetInt32());
 
-        // Tichetul de bun venit al lui Beta e neatins: cascada e limitată la proiectul șters.
+        // Beta's welcome ticket is untouched: the cascade stops at the deleted project.
         Assert.Equal(1, (await beta.GetJsonAsync("/api/tickets")).GetProperty("totalCount").GetInt32());
     }
 }
 
 /// <summary>
-/// Toate clasele de teste partajează o singură instanță de API și un singur container
-/// PostgreSQL: pornirea containerului durează câteva secunde, iar izolarea între teste
-/// vine din faptul că fiecare își creează propria organizație.
+/// All test classes share one API instance and one PostgreSQL container: starting it takes a
+/// few seconds, and isolation between tests comes from each creating its own organization.
 /// </summary>
 [CollectionDefinition(nameof(ApiCollection))]
-#pragma warning disable CA1711 // Sufixul „Collection" e cerut de convenția xUnit.
+#pragma warning disable CA1711 // The "Collection" suffix is required by xUnit's convention.
 public sealed class ApiCollection : ICollectionFixture<ApiFactory>;
 #pragma warning restore CA1711

@@ -1,0 +1,89 @@
+name: multitenant-saas
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mtsaas-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-multitenant_saas}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD lipsește - copiază .env.example în .env}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # Named volume, not a bind mount: data survives `docker compose down` and is removed
+      # only explicitly, with `docker compose down -v`.
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-multitenant_saas}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mtsaas-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        # Not just "the container started" but "the database accepts connections". Without
+        # this, the API starts first, fails to connect and dies.
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ASPNETCORE_HTTP_PORTS: 8080
+
+      # Double underscore is the section separator in .NET configuration:
+      # the equivalent of "ConnectionStrings": { "DefaultConnection": ... }
+      ConnectionStrings__DefaultConnection: >-
+        Host=postgres;Port=5432;Database=${POSTGRES_DB:-multitenant_saas};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD}
+
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:?JWT_SIGNING_KEY lipsește - copiază .env.example în .env}
+      Jwt__Issuer: ${JWT_ISSUER:-MultiTenantSaaS}
+      Jwt__Audience: ${JWT_AUDIENCE:-MultiTenantSaaS.Clients}
+
+      # Migrations run at startup, so `docker compose up` is the only step needed.
+      Database__AutoMigrate: "true"
+
+      # Seeds 3 demo organizations on first start so Swagger has something to show.
+      # Idempotent: does nothing if the database already holds organizations.
+      Database__SeedDemoData: "true"
+
+      # Swagger stays on in Production because this is a demo project meant to be opened by
+      # a reviewer. In a real system this would remain false.
+      Swagger__Enabled: "true"
+    ports:
+      - "${API_PORT:-8080}:8080"
+    healthcheck:
+      # busybox wget ships with the Alpine image; no need to install curl just for this.
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+
+  pgadmin:
+    image: dpage/pgadmin4:8
+    container_name: mtsaas-pgadmin
+    restart: unless-stopped
+    # Optional: starts only with `docker compose --profile tools up`.
+    profiles: ["tools"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@exemplu.ro}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - pgadmindata:/var/lib/pgadmin
+
+volumes:
+  pgdata:
+  pgadmindata:

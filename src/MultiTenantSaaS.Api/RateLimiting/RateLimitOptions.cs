@@ -4,12 +4,12 @@ using MultiTenantSaaS.Domain.Enums;
 
 namespace MultiTenantSaaS.Api.RateLimiting;
 
-/// <summary>Cotele de request-uri, din secțiunea <c>RateLimiting</c>.</summary>
+/// <summary>Request quotas, bound from the "RateLimiting" configuration section.</summary>
 public sealed class RateLimitOptions
 {
     public const string SectionName = "RateLimiting";
 
-    /// <summary>Numele policy-ului aplicat înregistrării de organizații noi.</summary>
+    /// <summary>Name of the policy applied to new-organization registration.</summary>
     public const string RegistrationPolicy = "registration";
 
     [Range(1, 1_000_000)]
@@ -21,24 +21,22 @@ public sealed class RateLimitOptions
     [Range(1, 1_000_000)]
     public int EnterprisePerMinute { get; set; } = 1000;
 
-    /// <summary>Cotă pentru cererile fără tenant rezolvat, partiționată pe adresă IP.</summary>
+    /// <summary>Quota for requests without a resolved tenant, partitioned by IP address.</summary>
     [Range(1, 1_000_000)]
     public int AnonymousPerMinute { get; set; } = 30;
 
-    /// <summary>Cotă separată, strictă, pentru crearea de organizații noi. Per IP, pe oră.</summary>
+    /// <summary>Separate strict quota for creating organizations. Per IP, per hour.</summary>
     [Range(1, 1000)]
     public int RegistrationsPerHour { get; set; } = 5;
 
-    /// <summary>Căi exceptate: sonde de health și documentație.</summary>
+    /// <summary>Exempt paths: health probes and documentation.</summary>
     public string[] SkipPaths { get; set; } = ["/health", "/swagger"];
 
     /// <summary>
-    /// Cota efectivă a unei organizații: override-ul negociat individual, altfel cota planului.
+    /// Effective quota for an organization: the negotiated override, otherwise the plan's quota.
+    /// The limit is a business rule, not an infrastructure setting, so a subscription upgrade
+    /// takes effect without a redeploy.
     /// </summary>
-    /// <remarks>
-    /// Limita e o regulă de business, nu o setare de infrastructură: se schimbă la upgrade
-    /// de abonament, fără redeploy, pentru că se citește din tenantul rezolvat la fiecare cerere.
-    /// </remarks>
     public int ResolveLimit(TenantInfo tenant)
     {
         ArgumentNullException.ThrowIfNull(tenant);

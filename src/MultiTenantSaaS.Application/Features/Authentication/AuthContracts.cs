@@ -3,12 +3,10 @@ using MultiTenantSaaS.Domain.Enums;
 
 namespace MultiTenantSaaS.Application.Features.Authentication;
 
-/// <summary>Cerere de autentificare. Organizația vine din contextul cererii, nu din corp.</summary>
-/// <remarks>
-/// Deliberat nu există un câmp <c>tenant</c> aici. Tenantul se stabilește în middleware
-/// (header sau subdomeniu), într-un singur loc pentru toată aplicația. Dacă l-am accepta și
-/// din corpul cererii, am avea două surse de adevăr care se pot contrazice.
-/// </remarks>
+/// <summary>
+/// Login request. The organization comes from the request context (X-Tenant header or
+/// subdomain), never from the body, so there is a single source of truth.
+/// </summary>
 public sealed record LoginRequest
 {
     [Required]
@@ -21,14 +19,14 @@ public sealed record LoginRequest
     public string Password { get; init; } = string.Empty;
 }
 
-/// <summary>Tokenul emis și datele utilizatorului autentificat.</summary>
+/// <summary>Issued token plus the authenticated user.</summary>
 public sealed record AuthResponse(
     string AccessToken,
     string TokenType,
     DateTime ExpiresAtUtc,
     UserResponse User);
 
-/// <summary>Proiecție publică a unui utilizator. Nu conține niciodată hash-ul parolei.</summary>
+/// <summary>Public view of a user. Never contains the password hash.</summary>
 public sealed record UserResponse(
     Guid Id,
     string Email,
@@ -37,7 +35,7 @@ public sealed record UserResponse(
     bool IsActive,
     DateTime? LastLoginAtUtc);
 
-/// <summary>Cerere de creare a unui utilizator în organizația curentă.</summary>
+/// <summary>Creates a user inside the caller's organization.</summary>
 public sealed record CreateUserRequest
 {
     [Required]
@@ -54,6 +52,6 @@ public sealed record CreateUserRequest
     [MaxLength(200)]
     public string FullName { get; init; } = string.Empty;
 
-    /// <summary>Rolul acordat. <see cref="UserRole.GlobalAdmin"/> este respins.</summary>
+    /// <summary>Role to grant. GlobalAdmin is rejected.</summary>
     public UserRole Role { get; init; } = UserRole.Member;
 }

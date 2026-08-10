@@ -29,15 +29,15 @@ public sealed class RateLimitOptionsTests
     [Fact]
     public void ResolveLimit_PrefersPerTenantOverride()
     {
-        // Cota negociată individual bate planul: un client Enterprise cu contract special
-        // nu trebuie să ne oblige să inventăm un plan nou în cod.
+        // A negotiated quota beats the plan: a special contract must not force a new plan
+        // into the code.
         Assert.Equal(5000, _sut.ResolveLimit(Tenant(SubscriptionPlan.Pro, 5000)));
     }
 
     [Fact]
     public void ResolveLimit_OverrideCanAlsoLowerTheQuota()
     {
-        // Util pentru a tempera un client care abuzează, fără să-i suspendăm accesul.
+        // Useful to throttle an abusive client without suspending their access.
         Assert.Equal(5, _sut.ResolveLimit(Tenant(SubscriptionPlan.Enterprise, 5)));
     }
 }

@@ -31,13 +31,13 @@ public sealed class TenantResolutionTests
 
         Assert.Equal(StatusCodes.Status200OK, context.Response.StatusCode);
         Assert.Equal(Acme.Id, resolved);
-        Assert.False(tenantContext.IsResolved); // scope-ul se închide la ieșirea din middleware
+        Assert.False(tenantContext.IsResolved); // the scope closes when the middleware exits
     }
 
     [Fact]
     public async Task Token_WinsOverHeader_WhenBothPresentAndConsistent()
     {
-        // Header cu ID-ul tenantului în loc de slug: aceeași organizație, altă formă.
+        // Header carrying the tenant id instead of the slug: same organization, other form.
         var (context, _, resolved) = await RunAsync(
             headerSlug: Acme.Id.ToString(),
             tokenTenantId: Acme.Id.ToString());
@@ -49,7 +49,7 @@ public sealed class TenantResolutionTests
     [Fact]
     public async Task Token_AndHeader_ForDifferentTenants_Returns403()
     {
-        // Scenariul de atac: utilizator autentificat în Acme, cere datele Globex prin header.
+        // Attack scenario: a user authenticated in Acme asks for Globex data via the header.
         var (context, _, resolved) = await RunAsync(
             headerSlug: "globex",
             tokenTenantId: Acme.Id.ToString());
@@ -96,9 +96,9 @@ public sealed class TenantResolutionTests
 
     [Theory]
     [InlineData("acme.api.exemplu.ro", "acme")]
-    [InlineData("api.exemplu.ro", null)]        // domeniul de bază nu e un tenant
-    [InlineData("a.b.api.exemplu.ro", null)]    // un singur nivel de subdomeniu
-    [InlineData("acme.alt-domeniu.ro", null)]   // Host controlat de client, dar necunoscut
+    [InlineData("api.exemplu.ro", null)]        // the base domain is not a tenant
+    [InlineData("a.b.api.exemplu.ro", null)]    // one subdomain level only
+    [InlineData("acme.alt-domeniu.ro", null)]   // client-controlled Host, unknown domain
     public void Subdomain_ExtractsOnlyValidSingleLabel(string host, string? expected)
     {
         var options = Options.Create(new TenantResolutionOptions
@@ -124,8 +124,8 @@ public sealed class TenantResolutionTests
 
         var context = new DefaultHttpContext
         {
-            // Results.Problem() are nevoie de serviciile cererii ca să serializeze răspunsul.
-            // În producție le pune ASP.NET Core; aici le construim minimal.
+            // Results.Problem() needs request services to serialize the response. ASP.NET Core
+            // supplies them in production; here we build a minimal set.
             RequestServices = new ServiceCollection()
                 .AddLogging()
                 .AddProblemDetails()
@@ -183,7 +183,7 @@ public sealed class TenantResolutionTests
 
         public void Invalidate(TenantInfo tenant)
         {
-            // Fără cache în acest fake, deci nimic de invalidat.
+            // No cache in this fake, so nothing to invalidate.
         }
     }
 }

@@ -4,22 +4,19 @@ using MultiTenantSaaS.Domain.Enums;
 
 namespace MultiTenantSaaS.Application.Features.Tenants;
 
-/// <summary>Cerere de înregistrare a unei organizații noi, împreună cu primul administrator.</summary>
+/// <summary>Registers a new organization together with its first administrator.</summary>
 public sealed record RegisterTenantRequest
 {
-    /// <summary>Numele afișat al organizației. Ex: „Acme Corporation".</summary>
     [Required]
     [MaxLength(200)]
     public string OrganizationName { get; init; } = string.Empty;
 
-    /// <summary>
-    /// Identificator URL-safe, unic pe platformă. Devine valoarea headerului <c>X-Tenant</c>.
-    /// </summary>
+    /// <summary>URL-safe identifier, unique platform-wide. Becomes the X-Tenant header value.</summary>
     [Required]
     [MinLength(3)]
     [MaxLength(63)]
     [RegularExpression("^[a-z0-9]([a-z0-9-]{1,61}[a-z0-9])$",
-        ErrorMessage = "Slug-ul acceptă doar litere mici, cifre și cratime, între 3 și 63 de caractere.")]
+        ErrorMessage = "The slug accepts only lowercase letters, digits and hyphens, 3 to 63 characters.")]
     public string Slug { get; init; } = string.Empty;
 
     [Required]
@@ -37,7 +34,6 @@ public sealed record RegisterTenantRequest
     public string AdminFullName { get; init; } = string.Empty;
 }
 
-/// <summary>Rezumatul unei organizații.</summary>
 public sealed record TenantSummary(
     Guid Id,
     string Slug,
@@ -47,8 +43,8 @@ public sealed record TenantSummary(
     DateTime CreatedAtUtc);
 
 /// <summary>
-/// Rezultatul onboarding-ului. Include un token valid, ca aplicația client să continue
-/// direct, fără un login separat imediat după înregistrare.
+/// Onboarding result. Includes a valid token so the client can continue without a separate
+/// login round-trip.
 /// </summary>
 public sealed record TenantRegistrationResponse(
     TenantSummary Tenant,
@@ -58,5 +54,5 @@ public sealed record TenantRegistrationResponse(
     DateTime ExpiresAtUtc,
     SeededData Seeded);
 
-/// <summary>Ce s-a creat automat în organizația nouă, ca să nu fie goală la prima deschidere.</summary>
+/// <summary>What was created automatically, so the new organization is not empty.</summary>
 public sealed record SeededData(Guid ProjectId, string ProjectCode, Guid WelcomeTicketId);

@@ -6,21 +6,21 @@ using MultiTenantSaaS.Application.Common;
 namespace MultiTenantSaaS.Api.Middleware;
 
 /// <summary>
-/// Stabilește tenantul curent pentru durata cererii. Rulează înaintea oricărui cod care
-/// atinge baza de date, ca query filter-ul din <c>ApplicationDbContext</c> să aibă ce citi.
+/// Establishes the current tenant for the lifetime of the request. Runs before any code that
+/// touches the database, so the DbContext query filter has something to read.
 /// </summary>
 public sealed partial class TenantResolutionMiddleware(
     RequestDelegate next,
     IOptions<TenantResolutionOptions> options,
     ILogger<TenantResolutionMiddleware> logger)
 {
-    // Delegate generate la compilare: zero alocări și zero boxing când nivelul de log
-    // e dezactivat. Middleware-ul rulează la fiecare cerere, deci contează.
-    [LoggerMessage(EventId = 1000, Level = LogLevel.Warning, Message = "Tenant necunoscut: {Identifier}")]
+    // Compile-time generated delegates: no allocations or boxing when the log level is off.
+    // This middleware runs on every request, so it matters.
+    [LoggerMessage(EventId = 1000, Level = LogLevel.Warning, Message = "Unknown tenant: {Identifier}")]
     private static partial void LogUnknownTenant(ILogger logger, string identifier);
 
     [LoggerMessage(EventId = 1001, Level = LogLevel.Warning,
-        Message = "Tenant din token ({TokenTenant}) diferit de cel din cerere ({RequestTenant}).")]
+        Message = "Tenant from token ({TokenTenant}) differs from the one in the request ({RequestTenant}).")]
     private static partial void LogTenantMismatch(ILogger logger, string tokenTenant, string requestTenant);
 
     public async Task InvokeAsync(
@@ -47,17 +47,16 @@ public sealed partial class TenantResolutionMiddleware(
             .Select(s => s.TryResolve(context))
             .FirstOrDefault(v => !string.IsNullOrWhiteSpace(v));
 
-        // Regula centrală de securitate a pasului: tokenul câștigă întotdeauna.
-        // Fără ea, un utilizator autentificat în tenantul A ar trimite "X-Tenant: b"
-        // și ar primi contextul tenantului B - iar toată izolarea de la Pasul 3 ar
-        // filtra corect pe tenantul greșit.
+        // The central rule: the token always wins. Without it, a user authenticated in tenant A
+        // could send "X-Tenant: b" and get tenant B's context, and every isolation layer below
+        // would filter correctly against the wrong tenant.
         var identifier = fromToken ?? fromRequest;
 
         if (string.IsNullOrWhiteSpace(identifier))
         {
-            // Cerere fără tenant: înregistrare de organizație, login fără header, sondă externă.
-            // Nu respingem aici; endpoint-urile care au nevoie de date eșuează închis oricum,
-            // pentru că query filter-ul nu se potrivește cu niciun rând.
+            // Tenant-less request: organization signup, a login without a header, a probe.
+            // Not rejected here; endpoints that need data fail closed anyway, because the query
+            // filter matches no row.
             await next(context);
             return;
         }
@@ -68,38 +67,37 @@ public sealed partial class TenantResolutionMiddleware(
         {
             LogUnknownTenant(logger, identifier);
             await WriteProblemAsync(context, StatusCodes.Status404NotFound,
-                "Tenant necunoscut", "Organizația cerută nu există.");
+                "Unknown tenant", "The requested organization does not exist.");
             return;
         }
 
-        // Dacă cererea e autentificată și aduce și un header/subdomeniu, cele două trebuie
-        // să coincidă. Divergența înseamnă fie client prost configurat, fie tentativă de
-        // acces încrucișat - în ambele cazuri, refuzăm în loc să ghicim.
+        // If the request is authenticated and also carries a header or subdomain, the two must
+        // agree. A mismatch is either a misconfigured client or a cross-tenant attempt: refuse
+        // rather than guess.
         if (fromToken is not null && fromRequest is not null && !Matches(tenant.Id, tenant.Slug, fromRequest))
         {
             LogTenantMismatch(logger, tenant.Slug, fromRequest);
 
             await WriteProblemAsync(context, StatusCodes.Status403Forbidden,
-                "Tenant incoerent", "Tenantul din token nu corespunde celui din cerere.");
+                "Inconsistent tenant", "The tenant in the token does not match the one in the request.");
             return;
         }
 
         if (!tenant.IsActive)
         {
             await WriteProblemAsync(context, StatusCodes.Status403Forbidden,
-                "Organizație suspendată", "Accesul acestei organizații este suspendat.");
+                "Organization suspended", "Access for this organization is suspended.");
             return;
         }
 
-        // Publicăm tenantul rezolvat ca feature al cererii: rate limiter-ul (Pas 8) rulează
-        // în afara scope-ului de DI al serviciilor și are nevoie de planul organizației
-        // ca să știe ce cotă să aplice.
+        // Publish the resolved tenant as a request feature: the rate limiter runs outside the
+        // services' DI scope and needs the organization's plan to pick a quota.
         context.Features.Set(tenant);
 
         using (tenantContext.BeginScope(tenant.Id, tenant.Slug))
         {
-            // Scope-ul se închide la ieșirea din using, deci tenantul nu poate „scăpa"
-            // într-o cerere ulterioară servită de același thread.
+            // The scope closes on exit, so the tenant cannot leak into a later request served
+            // by the same thread.
             await next(context);
         }
     }

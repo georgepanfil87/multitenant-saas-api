@@ -5,16 +5,13 @@ using MultiTenantSaaS.Application.Common;
 namespace MultiTenantSaaS.Api.Middleware;
 
 /// <summary>
-/// Traduce excepțiile așteptate ale aplicației în răspunsuri ProblemDetails (RFC 7807).
+/// Translates expected application errors into ProblemDetails responses (RFC 7807). Anything
+/// not derived from <see cref="AppException"/> is a bug: it is logged in full, but the client
+/// gets a generic 500. Stack traces, table names and database messages never leave the process.
 /// </summary>
-/// <remarks>
-/// Orice excepție care nu derivă din <see cref="AppException"/> este un bug: se loghează
-/// integral, dar clientul primește un 500 generic. Detaliile interne - stack trace, nume de
-/// tabele, mesaje de la PostgreSQL - nu ies niciodată din proces.
-/// </remarks>
 public sealed partial class AppExceptionHandler(ILogger<AppExceptionHandler> logger) : IExceptionHandler
 {
-    [LoggerMessage(EventId = 2000, Level = LogLevel.Error, Message = "Eroare netratată la {Method} {Path}")]
+    [LoggerMessage(EventId = 2000, Level = LogLevel.Error, Message = "Unhandled exception on {Method} {Path}")]
     private static partial void LogUnhandled(ILogger logger, Exception exception, string method, string path);
 
     public async ValueTask<bool> TryHandleAsync(
@@ -42,8 +39,8 @@ public sealed partial class AppExceptionHandler(ILogger<AppExceptionHandler> log
             problem = new ProblemDetails
             {
                 Status = StatusCodes.Status500InternalServerError,
-                Title = "Eroare internă",
-                Detail = "A apărut o eroare neașteptată."
+                Title = "Internal error",
+                Detail = "An unexpected error occurred."
             };
         }
 

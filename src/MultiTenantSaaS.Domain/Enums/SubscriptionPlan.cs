@@ -1,6 +1,6 @@
 namespace MultiTenantSaaS.Domain.Enums;
 
-/// <summary>Planul comercial al unui tenant. Determină cotele de rate limiting.</summary>
+/// <summary>Commercial plan of a tenant. Drives the rate limiting quota.</summary>
 public enum SubscriptionPlan
 {
     Free = 1,

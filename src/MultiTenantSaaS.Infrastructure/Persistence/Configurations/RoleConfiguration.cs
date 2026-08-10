@@ -12,15 +12,15 @@ public sealed class RoleConfiguration : IEntityTypeConfiguration<Role>
         builder.ToTable("Roles");
         builder.HasKey(r => r.Id);
 
-        // Fără asta EF ar trata cheia întreagă drept identity și ar ignora valorile din seed.
+        // Without this, EF would treat the integer key as an identity column and ignore seeds.
         builder.Property(r => r.Id).HasConversion<int>().ValueGeneratedNever();
 
         builder.Property(r => r.Name).IsRequired().HasMaxLength(50);
         builder.Property(r => r.Description).IsRequired().HasMaxLength(200);
 
         builder.HasData(
-            new { Id = UserRole.GlobalAdmin, Name = "GlobalAdmin", Description = "Administrator de platformă." },
-            new { Id = UserRole.TenantAdmin, Name = "TenantAdmin", Description = "Administrator al organizației." },
-            new { Id = UserRole.Member, Name = "Member", Description = "Utilizator al organizației." });
+            new { Id = UserRole.GlobalAdmin, Name = "GlobalAdmin", Description = "Platform administrator." },
+            new { Id = UserRole.TenantAdmin, Name = "TenantAdmin", Description = "Organization administrator." },
+            new { Id = UserRole.Member, Name = "Member", Description = "Organization user." });
     }
 }

@@ -3,16 +3,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MultiTenantSaaS.Infrastructure.Persistence.Converters;
 
 /// <summary>
-/// Garantează că orice <see cref="DateTime"/> ajunge în PostgreSQL ca UTC și se întoarce
-/// cu <see cref="DateTimeKind.Utc"/>.
+/// Ensures every <see cref="DateTime"/> reaches PostgreSQL as UTC and comes back with
+/// <see cref="DateTimeKind.Utc"/>. Npgsql rejects Unspecified values for timestamptz columns,
+/// and JSON deserialization produces exactly that. Unspecified is treated as UTC rather than
+/// converted from local time, so results do not depend on the server's time zone.
 /// </summary>
-/// <remarks>
-/// Npgsql aruncă excepție dacă primește un <c>DateTime</c> cu <c>Kind.Unspecified</c> pentru
-/// o coloană <c>timestamptz</c> - iar un DateTime deserializat din JSON este exact
-/// Unspecified. Fără convertorul acesta, orice câmp de dată trimis de client crapă la salvare.
-/// Unspecified e tratat ca UTC, nu convertit din ora locală, ca rezultatul să nu depindă
-/// de fusul orar al serverului.
-/// </remarks>
 public sealed class UtcDateTimeConverter : ValueConverter<DateTime, DateTime>
 {
     public UtcDateTimeConverter()

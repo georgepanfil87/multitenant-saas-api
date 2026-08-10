@@ -8,8 +8,8 @@ using MultiTenantSaaS.Infrastructure.Persistence.Converters;
 namespace MultiTenantSaaS.Infrastructure.Persistence;
 
 /// <summary>
-/// Contextul EF Core al aplicației. Aplică automat izolarea pe tenant: filtrează la citire
-/// și ștampilează <c>TenantId</c> la scriere, pentru orice entitate <see cref="ITenantEntity"/>.
+/// The application's EF Core context. Applies tenant isolation automatically for every
+/// <see cref="ITenantEntity"/>: filters on read, stamps TenantId on write.
 /// </summary>
 public sealed class ApplicationDbContext(
     DbContextOptions<ApplicationDbContext> options,
@@ -27,8 +27,8 @@ public sealed class ApplicationDbContext(
     public DbSet<Ticket> Tickets => Set<Ticket>();
 
     /// <summary>
-    /// Tenantul folosit de query filter. <see cref="Guid.Empty"/> când nu s-a rezolvat niciunul,
-    /// ceea ce nu se potrivește cu niciun rând: sistemul eșuează închis, nu deschis.
+    /// Tenant used by the query filter. <see cref="Guid.Empty"/> when none was resolved, which
+    /// matches no row: the system fails closed, not open.
     /// </summary>
     public Guid CurrentTenantId => tenantContext.TenantId ?? Guid.Empty;
 
@@ -42,8 +42,8 @@ public sealed class ApplicationDbContext(
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
 
-        // Filtrul nu se scrie manual pe fiecare entitate. Se descoperă prin reflection tot
-        // ce implementează ITenantEntity, deci o entitate nouă nu poate fi uitată nefiltrată.
+        // The filter is never written per entity. Everything implementing ITenantEntity is
+        // discovered by reflection, so a new entity cannot be left unfiltered by accident.
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
             if (typeof(ITenantEntity).IsAssignableFrom(entityType.ClrType))
@@ -71,8 +71,8 @@ public sealed class ApplicationDbContext(
         return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
     }
 
-    // Expresia referă CurrentTenantId, membru al contextului: EF Core îl transformă într-un
-    // parametru SQL reevaluat la fiecare execuție, nu într-o constantă înghețată în model.
+    // The expression references CurrentTenantId, a context member: EF Core turns it into a SQL
+    // parameter re-evaluated per query, not a constant frozen into the cached model.
     private void ApplyTenantFilter<TEntity>(ModelBuilder modelBuilder)
         where TEntity : class, ITenantEntity
     {
@@ -100,8 +100,8 @@ public sealed class ApplicationDbContext(
                 case EntityState.Added:
                     var currentTenantId = tenantContext.TenantId
                         ?? throw new InvalidOperationException(
-                            $"Nu se poate salva {entry.Entity.GetType().Name}: " +
-                            "niciun tenant rezolvat pentru operațiunea curentă.");
+                            $"Cannot save {entry.Entity.GetType().Name}: " +
+                            "no tenant resolved for the current operation.");
 
                     var assignedTenantId = (Guid)tenantProperty.CurrentValue!;
                     if (assignedTenantId == Guid.Empty)
@@ -111,21 +111,20 @@ public sealed class ApplicationDbContext(
                     else if (assignedTenantId != currentTenantId)
                     {
                         throw new InvalidOperationException(
-                            $"Se încearcă scrierea unui {entry.Entity.GetType().Name} în tenantul " +
-                            $"{assignedTenantId}, dar contextul curent este {currentTenantId}.");
+                            $"Attempted to write a {entry.Entity.GetType().Name} into tenant " +
+                            $"{assignedTenantId}, but the current context is {currentTenantId}.");
                     }
 
                     break;
 
                 case EntityState.Modified:
                 case EntityState.Deleted:
-                    // Prinde încercarea de a muta un rând dintr-un tenant în altul. Rândurile
-                    // ajung aici filtrate, deci ar trebui să fie imposibil - de asta e InvalidOperation,
-                    // nu un mesaj de validare: dacă se declanșează, ceva mai grav e stricat.
+                    // Catches an attempt to move a row between tenants. Rows arrive here already
+                    // filtered, so this should be unreachable: if it fires, something deeper is broken.
                     if (!Equals(tenantProperty.OriginalValue, tenantProperty.CurrentValue))
                     {
                         throw new InvalidOperationException(
-                            $"TenantId nu poate fi modificat pe {entry.Entity.GetType().Name} " +
+                            $"TenantId cannot be changed on {entry.Entity.GetType().Name} " +
                             $"({tenantProperty.OriginalValue} -> {tenantProperty.CurrentValue}).");
                     }
 

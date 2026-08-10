@@ -9,7 +9,7 @@ using MultiTenantSaaS.Domain.Entities;
 
 namespace MultiTenantSaaS.Infrastructure.Identity;
 
-/// <summary>Emite JWT-uri semnate simetric (HMAC-SHA256).</summary>
+/// <summary>Issues symmetrically signed JWTs (HMAC-SHA256).</summary>
 public sealed class JwtTokenGenerator(IOptions<JwtOptions> options) : IJwtTokenGenerator
 {
     public GeneratedToken Generate(User user, string tenantSlug)
@@ -19,9 +19,8 @@ public sealed class JwtTokenGenerator(IOptions<JwtOptions> options) : IJwtTokenG
         var settings = options.Value;
         var expiresAtUtc = DateTime.UtcNow.AddMinutes(settings.AccessTokenMinutes);
 
-        // tenant_id în token este ceea ce face izolarea nefalsificabilă: middleware-ul de la
-        // Pasul 4 îl preferă oricărui header, iar clientul nu-l poate modifica fără să
-        // invalideze semnătura.
+        // tenant_id in the token is what makes isolation unforgeable: the resolution middleware
+        // prefers it over any header, and the client cannot change it without breaking the signature.
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),

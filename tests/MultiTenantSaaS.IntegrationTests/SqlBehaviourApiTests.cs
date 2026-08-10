@@ -6,8 +6,8 @@ using Xunit;
 namespace MultiTenantSaaS.IntegrationTests;
 
 /// <summary>
-/// Comportamente care nu se pot verifica pe provider-ul in-memory sau fără pipeline HTTP.
-/// Fiecare test de aici corespunde unui bug real apărut în timpul dezvoltării.
+/// Behaviour that cannot be verified on the in-memory provider or without the HTTP pipeline.
+/// Each test here corresponds to a real bug found during development.
 /// </summary>
 [Collection(nameof(ApiCollection))]
 public sealed class SqlBehaviourApiTests(ApiFactory factory)
@@ -15,24 +15,24 @@ public sealed class SqlBehaviourApiTests(ApiFactory factory)
     [Fact]
     public async Task TicketListing_TranslatesProjectionToSql()
     {
-        // Regresie: proiecția era un apel de metodă statică în Select, pe care EF Core
-        // nu-l poate traduce. In-memory evalua pe client (cu Project null); pe PostgreSQL
-        // ar fi aruncat „could not be translated".
+        // Regression: the projection was a static method call inside Select, which EF Core
+        // cannot translate. In-memory evaluated it client-side with a null Project; PostgreSQL
+        // would have thrown "could not be translated".
         var (client, _, _) = await ApiClient.RegisterTenantAsync(factory, "sql-proj");
 
         var tickets = await client.GetJsonAsync("/api/tickets");
         var first = tickets.GetProperty("items")[0];
 
-        // projectCode vine din JOIN-ul către Projects, deci dovedește traducerea corectă.
+        // projectCode comes from the join to Projects, proving the translation works.
         Assert.Equal("GEN", first.GetProperty("projectCode").GetString());
     }
 
     [Fact]
     public async Task Pagination_BindsFromQueryString()
     {
-        // Regresie: parametrul de acțiune se numea „page", la fel ca o cheie din query string,
-        // iar model binder-ul comuta pe prefixul „page.” și ignora „pageSize”. Niciun test
-        // unitar nu putea prinde asta - bug-ul era în binding, nu în logică.
+        // Regression: the action parameter was named "page", colliding with a query-string key,
+        // so the model binder switched to the "page." prefix and ignored "pageSize". No unit test
+        // could catch this: the bug was in binding, not in logic.
         var (client, _, _) = await ApiClient.RegisterTenantAsync(factory, "sql-pag");
 
         var projects = await client.GetJsonAsync("/api/projects");
@@ -47,7 +47,7 @@ public sealed class SqlBehaviourApiTests(ApiFactory factory)
 
         Assert.Equal(2, firstPage.GetProperty("pageSize").GetInt32());
         Assert.Equal(2, firstPage.GetProperty("items").GetArrayLength());
-        Assert.Equal(5, firstPage.GetProperty("totalCount").GetInt32()); // 4 + tichetul de bun venit
+        Assert.Equal(5, firstPage.GetProperty("totalCount").GetInt32()); // 4 plus the welcome ticket
         Assert.Equal(3, firstPage.GetProperty("totalPages").GetInt32());
         Assert.True(firstPage.GetProperty("hasNextPage").GetBoolean());
 
@@ -80,7 +80,7 @@ public sealed class SqlBehaviourApiTests(ApiFactory factory)
         var byLowercase = await client.GetJsonAsync("/api/tickets?search=login");
         Assert.Single(byLowercase.GetProperty("items").EnumerateArray());
 
-        // „%" trebuie tratat ca text, nu ca wildcard: altfel ar returna toate tichetele.
+        // "%" must be treated as text, not a wildcard, or every ticket would match.
         var byPercent = await client.GetJsonAsync("/api/tickets?search=100%25");
         Assert.Single(byPercent.GetProperty("items").EnumerateArray());
     }
@@ -88,8 +88,8 @@ public sealed class SqlBehaviourApiTests(ApiFactory factory)
     [Fact]
     public async Task DueDateFromJson_IsStoredAsUtc()
     {
-        // Npgsql respinge un DateTime cu Kind.Unspecified pentru timestamptz, iar orice dată
-        // venită din JSON este exact Unspecified. Convertorul din DbContext o normalizează.
+        // Npgsql rejects Unspecified DateTime values for timestamptz, and anything coming from
+        // JSON is exactly that. The DbContext converter normalizes it.
         var (client, _, _) = await ApiClient.RegisterTenantAsync(factory, "sql-data");
 
         var projects = await client.GetJsonAsync("/api/projects");
@@ -99,7 +99,7 @@ public sealed class SqlBehaviourApiTests(ApiFactory factory)
         {
             projectId,
             title = "Cu termen limită",
-            dueDateUtc = "2026-12-31T23:59:00"   // fără fus orar, deliberat
+            dueDateUtc = "2026-12-31T23:59:00"   // deliberately without a time zone
         });
 
         var stored = await client.GetJsonAsync($"/api/tickets/{created.GetProperty("id").GetString()}");

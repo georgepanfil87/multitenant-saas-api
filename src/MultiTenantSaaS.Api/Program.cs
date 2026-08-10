@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.HttpOverrides;
 using MultiTenantSaaS.Api.Extensions;
 using MultiTenantSaaS.Api.Middleware;
 using MultiTenantSaaS.Application;
@@ -16,32 +17,45 @@ builder.Services.AddTenantRateLimiting(builder.Configuration);
 builder.Services.AddExceptionHandler<AppExceptionHandler>();
 builder.Services.AddProblemDetails();
 
+// Behind a reverse proxy, RemoteIpAddress would otherwise be the proxy's address, putting
+// every anonymous client into the same rate-limiting partition.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerDocumentation();
 
 var app = builder.Build();
 
+await app.MigrateDatabaseAsync();
+await app.SeedDemoDataAsync();
+
+app.UseForwardedHeaders();
 app.UseExceptionHandler();
 
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || app.Configuration.GetValue("Swagger:Enabled", false))
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerDocumentation();
 }
 
-app.UseHttpsRedirection();
+// HTTPS redirection is off by default: in a container TLS terminates at the proxy and a
+// redirect here would loop. Enable it where the app serves HTTPS directly.
+if (app.Configuration.GetValue("EnableHttpsRedirection", false))
+{
+    app.UseHttpsRedirection();
+}
 
-// Ordinea de aici este parte din modelul de securitate:
-// UseAuthentication populează claim-urile -> UseTenantResolution le poate citi și
-// stabilește tenantul -> UseAuthorization decide accesul -> endpoint-urile lucrează
-// deja într-un context de tenant.
+// This order is part of the security model: UseAuthentication populates the claims, then
+// UseTenantResolution reads them and sets the tenant, then UseAuthorization decides access,
+// so endpoints already run inside a tenant context.
 app.UseAuthentication();
 app.UseTenantResolution();
 
-// După rezoluția tenantului: limitatorul are nevoie de planul organizației ca să știe
-// ce cotă să aplice. Consecința asumată este că o cerere respinsă a costat deja
-// validarea tokenului și o căutare de tenant (servită din cache).
+// After tenant resolution: the limiter needs the organization's plan to pick a quota.
 app.UseRateLimiter();
 
 app.UseAuthorization();
@@ -61,7 +75,7 @@ app.MapGet("/api/tenant/current", (ITenantContext tenantContext) => Results.Ok(n
    .WithName("CurrentTenant")
    .WithTags("System");
 
-app.Run();
+await app.RunAsync();
 
-/// <summary>Expus pentru testele de integrare (WebApplicationFactory).</summary>
+/// <summary>Exposed for integration tests (WebApplicationFactory).</summary>
 public partial class Program;
