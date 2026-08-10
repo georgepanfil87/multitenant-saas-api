@@ -180,5 +180,10 @@ public sealed class TenantResolutionTests
 
             return Task.FromResult(match);
         }
+
+        public void Invalidate(TenantInfo tenant)
+        {
+            // Fără cache în acest fake, deci nimic de invalidat.
+        }
     }
 }

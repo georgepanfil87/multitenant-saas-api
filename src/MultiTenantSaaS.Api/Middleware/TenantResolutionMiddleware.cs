@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using MultiTenantSaaS.Api.MultiTenancy;
 using MultiTenantSaaS.Application.Abstractions;
+using MultiTenantSaaS.Application.Common;
 
 namespace MultiTenantSaaS.Api.Middleware;
 
@@ -89,6 +90,11 @@ public sealed partial class TenantResolutionMiddleware(
                 "Organizație suspendată", "Accesul acestei organizații este suspendat.");
             return;
         }
+
+        // Publicăm tenantul rezolvat ca feature al cererii: rate limiter-ul (Pas 8) rulează
+        // în afara scope-ului de DI al serviciilor și are nevoie de planul organizației
+        // ca să știe ce cotă să aplice.
+        context.Features.Set(tenant);
 
         using (tenantContext.BeginScope(tenant.Id, tenant.Slug))
         {

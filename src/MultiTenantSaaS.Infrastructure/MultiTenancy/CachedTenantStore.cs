@@ -52,4 +52,13 @@ public sealed class CachedTenantStore(ApplicationDbContext db, IMemoryCache cach
         cache.Set(key, info, info is null ? MissTtl : HitTtl);
         return info;
     }
+
+    public void Invalidate(TenantInfo tenant)
+    {
+        ArgumentNullException.ThrowIfNull(tenant);
+
+        // Tenantul e cache-uit sub ambele forme de identificator, deci le eliminăm pe ambele.
+        cache.Remove($"tenant:{tenant.Slug.ToLowerInvariant()}");
+        cache.Remove($"tenant:{tenant.Id.ToString().ToLowerInvariant()}");
+    }
 }

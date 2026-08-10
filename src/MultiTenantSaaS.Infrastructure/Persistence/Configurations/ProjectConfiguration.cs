@@ -17,6 +17,7 @@ public sealed class ProjectConfiguration : IEntityTypeConfiguration<Project>
         builder.Property(p => p.Description).HasMaxLength(2000);
 
         builder.HasIndex(p => new { p.TenantId, p.Code }).IsUnique();
+        builder.HasIndex(p => new { p.TenantId, p.CreatedAtUtc });
 
         // Cheie alternativă (TenantId, Id): ținta compusă a cheii străine din Tickets.
         // Fără ea, un tichet ar putea referi, la nivel de bază de date, un proiect al

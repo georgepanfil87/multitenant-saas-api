@@ -23,6 +23,9 @@ public sealed class TicketConfiguration : IEntityTypeConfiguration<Ticket>
         builder.HasIndex(t => new { t.TenantId, t.Status });
         builder.HasIndex(t => new { t.TenantId, t.AssignedToUserId });
 
+        // Susține ordonarea implicită a listării (cele mai noi întâi) fără sortare în memorie.
+        builder.HasIndex(t => new { t.TenantId, t.CreatedAtUtc });
+
         // Cheie străină compusă către (TenantId, Id) din Projects: PostgreSQL însuși
         // respinge un tichet care referă proiectul altui tenant.
         builder.HasOne(t => t.Project)

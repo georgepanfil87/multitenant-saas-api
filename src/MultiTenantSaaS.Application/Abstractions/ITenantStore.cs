@@ -11,4 +11,11 @@ public interface ITenantStore
     /// </summary>
     /// <returns><c>null</c> dacă identificatorul nu corespunde niciunui tenant.</returns>
     Task<TenantInfo?> FindAsync(string identifier, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Elimină din cache intrările pentru un tenant. Necesar imediat după onboarding:
+    /// dacă cineva a interogat slug-ul înainte de a exista, rezultatul negativ e memorat,
+    /// iar organizația nou creată ar părea inexistentă până la expirarea lui.
+    /// </summary>
+    void Invalidate(TenantInfo tenant);
 }

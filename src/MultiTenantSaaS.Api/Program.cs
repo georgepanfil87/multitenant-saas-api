@@ -1,20 +1,28 @@
 using MultiTenantSaaS.Api.Extensions;
+using MultiTenantSaaS.Api.Middleware;
+using MultiTenantSaaS.Application;
 using MultiTenantSaaS.Application.Abstractions;
+using MultiTenantSaaS.Application.Common;
 using MultiTenantSaaS.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddApplication();
 builder.Services.AddTenantResolution(builder.Configuration);
+builder.Services.AddJwtAuthentication(builder.Configuration);
+builder.Services.AddTenantRateLimiting(builder.Configuration);
 
-// Fără schemă configurată deocamdată; UseAuthentication ar arunca la pornire fără
-// această înregistrare. JWT Bearer se adaugă la Pasul 5.
-builder.Services.AddAuthentication();
+builder.Services.AddExceptionHandler<AppExceptionHandler>();
+builder.Services.AddProblemDetails();
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
+
+app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
 {
@@ -25,11 +33,17 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 // Ordinea de aici este parte din modelul de securitate:
-// UseAuthentication (Pas 5) populează claim-urile -> UseTenantResolution le poate citi
-// și stabilește tenantul -> UseAuthorization decide accesul -> endpoint-urile lucrează
+// UseAuthentication populează claim-urile -> UseTenantResolution le poate citi și
+// stabilește tenantul -> UseAuthorization decide accesul -> endpoint-urile lucrează
 // deja într-un context de tenant.
 app.UseAuthentication();
 app.UseTenantResolution();
+
+// După rezoluția tenantului: limitatorul are nevoie de planul organizației ca să știe
+// ce cotă să aplice. Consecința asumată este că o cerere respinsă a costat deja
+// validarea tokenului și o căutare de tenant (servită din cache).
+app.UseRateLimiter();
+
 app.UseAuthorization();
 
 app.MapControllers();
@@ -38,11 +52,12 @@ app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "Mult
    .WithName("HealthCheck")
    .WithTags("System");
 
-// Endpoint de diagnostic: arată ce tenant a rezolvat middleware-ul pentru cererea curentă.
-// Se restrânge la GlobalAdmin la Pasul 5, când există autorizare.
-app.MapGet("/api/tenant/current", (ITenantContext tenantContext) => tenantContext.IsResolved
-        ? Results.Ok(new { tenantId = tenantContext.TenantId, slug = tenantContext.TenantSlug })
-        : Results.Ok(new { tenantId = (Guid?)null, slug = (string?)null }))
+app.MapGet("/api/tenant/current", (ITenantContext tenantContext) => Results.Ok(new
+    {
+        tenantId = tenantContext.TenantId,
+        slug = tenantContext.TenantSlug
+    }))
+   .RequireAuthorization(AuthorizationPolicies.Member)
    .WithName("CurrentTenant")
    .WithTags("System");
 

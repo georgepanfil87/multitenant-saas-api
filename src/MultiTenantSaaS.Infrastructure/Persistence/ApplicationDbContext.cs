@@ -13,7 +13,7 @@ namespace MultiTenantSaaS.Infrastructure.Persistence;
 /// </summary>
 public sealed class ApplicationDbContext(
     DbContextOptions<ApplicationDbContext> options,
-    ITenantContext tenantContext) : DbContext(options)
+    ITenantContext tenantContext) : DbContext(options), IApplicationDbContext
 {
     private static readonly MethodInfo ApplyTenantFilterMethod =
         typeof(ApplicationDbContext).GetMethod(
