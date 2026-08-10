@@ -52,7 +52,7 @@ public static class SwaggerExtensions
                 Title = "MultiTenant SaaS API",
                 Version = "v1",
                 Description = Description,
-                Contact = new OpenApiContact { Name = "George Panfil", Url = new Uri("https://github.com/") }
+                Contact = new OpenApiContact { Name = "George Panfil", Url = new Uri("https://github.com/georgepanfil87") }
             });
 
             // XML comments from both assemblies: controllers live in Api, DTOs in Application.

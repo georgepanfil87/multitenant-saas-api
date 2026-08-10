@@ -3,7 +3,7 @@
 A multi-tenant API starter for a helpdesk-style SaaS product, built with .NET 8, Clean
 Architecture and PostgreSQL, with data isolation enforced at three independent levels.
 
-[![CI](https://github.com/USER/multitenant-saas-api/actions/workflows/ci.yml/badge.svg)](https://github.com/USER/multitenant-saas-api/actions/workflows/ci.yml)
+[![CI](https://github.com/georgepanfil87/multitenant-saas-api/actions/workflows/ci.yml/badge.svg)](https://github.com/georgepanfil87/multitenant-saas-api/actions/workflows/ci.yml)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791)
 ![Tests](https://img.shields.io/badge/tests-112%20passing-brightgreen)
